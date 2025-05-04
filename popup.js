@@ -1,18 +1,34 @@
 document.addEventListener('DOMContentLoaded', () => {
-  const speedInput = document.getElementById('speed');
+  const speedInput      = document.getElementById('speed');
   const skipAdsCheckbox = document.getElementById('skipAds');
-  const saveBtn = document.getElementById('save');
+  const saveBtn         = document.getElementById('save');
 
-  // Load saved settings
-  chrome.storage.sync.get(["speed", "skipAds"], (data) => {
-    if (data.speed) speedInput.value = data.speed;
-    if (data.skipAds) skipAdsCheckbox.checked = data.skipAds;
+  // Default values
+  const defaults = { speed: '1.0', skipAds: false };
+
+  // 1) Load stored (or default) settings
+  chrome.storage.sync.get(defaults, (data) => {
+    speedInput.value        = data.speed;
+    skipAdsCheckbox.checked = data.skipAds;
   });
 
-  saveBtn.onclick = () => {
+  // 2) Save on click
+  saveBtn.addEventListener('click', () => {
+    // Read & sanitize
+    let speed = parseFloat(speedInput.value);
+    if (isNaN(speed) || speed < 0.1) speed = parseFloat(defaults.speed);
+
+    const skipAds = !!skipAdsCheckbox.checked;
+
+    // Write to storage
     chrome.storage.sync.set({
-      speed: speedInput.value,
-      skipAds: skipAdsCheckbox.checked
+      speed: speed.toString(),
+      skipAds
+    }, () => {
+      // Feedback: flash button text
+      const original = saveBtn.textContent;
+      saveBtn.textContent = 'Saved!';
+      setTimeout(() => saveBtn.textContent = original, 800);
     });
-  };
+  });
 });
