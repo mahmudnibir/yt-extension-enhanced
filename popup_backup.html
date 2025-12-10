@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>YouTube Speed Controller</title>
+  <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Spline+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "primary": "#135bec",
+            "background-light": "#f6f6f8",
+            "background-dark": "#111318",
+            "surface-light": "#ffffff",
+            "surface-dark": "#1b1f28",
+            "border-light": "#e5e7eb",
+            "border-dark": "#282e39",
+            "text-primary-light": "#111827",
+            "text-primary-dark": "#ffffff",
+            "text-secondary-light": "#6b7280",
+            "text-secondary-dark": "#9da6b9",
+            "destructive": "#e11d48",
+          },
+          fontFamily: {
+            "display": ["Spline Sans", "sans-serif"]
+          },
+        },
+      },
+    }
+  </script>
+  <style>
+    body {
+      width: 420px;
+      max-height: 600px;
+      overflow-y: auto;
+    }
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24
+    }
+    body::-webkit-scrollbar { width: 8px; }
+    body::-webkit-scrollbar-track { background: transparent; }
+    body::-webkit-scrollbar-thumb { background: #282e39; border-radius: 4px; }
+    body::-webkit-scrollbar-thumb:hover { background: #383e49; }
+  </style>
+    :root {
+      --primary-green: #22C55E;
+      --dark-green: #16A34A;
+      --light-green: #4ADE80;
+      --surface-white: #FFFFFF;
+      --surface-light: #F8FAFC;
+      --surface-gray: #F1F5F9;
+      --text-primary: #0F172A;
+      --text-secondary: #64748B;
+      --text-muted: #94A3B8;
+      --border-light: #E2E8F0;
+      --border-green: #BBF7D0;
+      --success-green: #10B981;
+      --gradient-primary: linear-gradient(135deg, #22C55E 0%, #16A34A 100%);
+      --gradient-light: linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 100%);
+      --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.1);
+      --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.15);
+      --shadow-lg: 0 10px 25px rgba(15, 23, 42, 0.2);
+      --shadow-green: 0 4px 14px rgba(34, 197, 94, 0.25);
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+      --radius-xl: 20px;
+      --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      width: 380px;
+      min-height: 500px;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--surface-white);
+      color: var(--text-primary);
+      overflow: hidden;
+      position: relative;
+    }
+
+    body::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: 
+        radial-gradient(circle at 20% 80%, rgba(34, 197, 94, 0.03) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(34, 197, 94, 0.05) 0%, transparent 50%),
+        linear-gradient(180deg, var(--surface-white) 0%, var(--surface-light) 100%);
+      pointer-events: none;
+    }
+
+    .container {
+      padding: 24px;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Header */
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 32px;
+      padding: 24px;
+      background: var(--gradient-light);
+      border-radius: var(--radius-xl);
+      border: 1px solid var(--border-green);
+      position: relative;
+      overflow: hidden;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .header::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: var(--gradient-primary);
+    }
+
+    .logo {
+      width: 56px;
+      height: 56px;
+      background: var(--gradient-primary);
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      box-shadow: var(--shadow-green);
+      position: relative;
+      color: white;
+    }
+
+    .header-text {
+      flex: 1;
+    }
+
+    .title {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 4px;
+      letter-spacing: -0.02em;
+    }
+
+    .subtitle {
+      font-size: 14px;
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+
+    .status-indicator {
+      width: 10px;
+      height: 10px;
+      background: var(--success-green);
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+      box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.2);
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.6; transform: scale(1.2); }
+    }
+
+    /* Control Groups */
+    .control-group {
+      background: var(--surface-white);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      margin-bottom: 20px;
+      border: 1px solid var(--border-light);
+      position: relative;
+      transition: var(--transition);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .control-group:hover {
+      border-color: var(--primary-green);
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-green);
+    }
+
+    .control-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+
+    .control-title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .control-icon {
+      width: 32px;
+      height: 32px;
+      background: var(--gradient-primary);
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      color: white;
+    }
+
+    .speed-display {
+      background: var(--gradient-primary);
+      color: white;
+      padding: 8px 16px;
+      border-radius: var(--radius-lg);
+      font-family: 'Inter', sans-serif;
+      font-weight: 600;
+      font-size: 14px;
+      min-width: 60px;
+      text-align: center;
+      box-shadow: var(--shadow-green);
+    }
+
+    .control-description {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+      line-height: 1.4;
+    }
+    /* Premium Slider */
+    .speed-slider-container {
+      position: relative;
+      margin: 16px 0;
+    }
+
+    .speed-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 8px;
+      border-radius: var(--radius-sm);
+      background: var(--surface-gray);
+      outline: none;
+      position: relative;
+      cursor: pointer;
+    }
+
+    .speed-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: var(--gradient-primary);
+      cursor: grab;
+      border: 3px solid var(--surface-white);
+      box-shadow: var(--shadow-green);
+      transition: var(--transition);
+      position: relative;
+    }
+
+    .speed-slider::-webkit-slider-thumb:hover {
+      transform: scale(1.15);
+      box-shadow: 0 6px 24px rgba(34, 197, 94, 0.4);
+    }
+
+    .speed-slider::-webkit-slider-thumb:active {
+      cursor: grabbing;
+      transform: scale(1.05);
+    }
+
+    .speed-slider::-moz-range-thumb {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: var(--gradient-primary);
+      cursor: pointer;
+      border: 3px solid var(--surface-1);
+      box-shadow: var(--shadow-md);
+    }
+
+    .slider-labels {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 8px;
+      font-size: 11px;
+      color: var(--text-muted);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Premium Toggle */
+    .toggle-switch {
+      position: relative;
+      display: inline-block;
+      width: 56px;
+      height: 32px;
+    }
+
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: var(--surface-gray);
+      transition: var(--transition);
+      border-radius: 32px;
+      border: 2px solid var(--border-light);
+    }
+
+    .toggle-slider:before {
+      position: absolute;
+      content: "";
+      height: 24px;
+      width: 24px;
+      left: 2px;
+      bottom: 2px;
+      background: var(--surface-white);
+      transition: var(--transition);
+      border-radius: 50%;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .toggle-switch input:checked + .toggle-slider {
+      background: var(--gradient-primary);
+      border-color: var(--primary-green);
+    }
+
+    .toggle-switch input:checked + .toggle-slider:before {
+      transform: translateX(24px);
+      background: white;
+      box-shadow: var(--shadow-md);
+    }
+
+    .toggle-switch:hover .toggle-slider {
+      box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.1);
+    }
+
+    /* Premium Buttons */
+    .action-section {
+      margin-top: 32px;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 16px 24px;
+      border: none;
+      border-radius: var(--radius-lg);
+      font-weight: 600;
+      font-size: 15px;
+      cursor: pointer;
+      transition: var(--transition);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      position: relative;
+      overflow: hidden;
+      margin-bottom: 12px;
+    }
+
+    .btn::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+      transition: left 0.5s;
+    }
+
+    .btn:hover::before {
+      left: 100%;
+    }
+
+    .btn-primary {
+      background: var(--gradient-primary);
+      color: white;
+      box-shadow: var(--shadow-md);
+      font-weight: 700;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-lg);
+    }
+
+    .btn-secondary {
+      background: var(--surface-light);
+      color: var(--text-primary);
+      border: 1px solid var(--border-light);
+    }
+
+    .btn-secondary:hover {
+      background: var(--surface-gray);
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-md);
+      border-color: var(--primary-green);
+    }
+
+    /* Shortcuts Panel */
+    .shortcuts-panel {
+      background: var(--surface-white);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      border: 1px solid var(--border-light);
+      margin-top: 20px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .shortcuts-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .shortcuts-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .shortcuts-grid {
+      display: grid;
+      gap: 8px;
+    }
+
+    .shortcut-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 12px;
+      background: var(--surface-light);
+      border-radius: var(--radius-sm);
+      transition: var(--transition);
+    }
+
+    .shortcut-item:hover {
+      background: var(--surface-gray);
+      transform: translateX(2px);
+    }
+
+    .shortcut-desc {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .shortcut-key {
+      background: var(--gradient-primary);
+      color: white;
+      padding: 4px 8px;
+      border-radius: var(--radius-sm);
+      font-family: 'Inter', monospace;
+      font-size: 11px;
+      font-weight: 600;
+      border: 1px solid rgba(34, 197, 94, 0.2);
+      box-shadow: 0 2px 4px rgba(34, 197, 94, 0.2);
+    }
+
+    /* Animations */
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .control-group {
+      animation: slideIn 0.4s ease-out;
+    }
+
+    .control-group:nth-child(2) { animation-delay: 0.1s; }
+    .control-group:nth-child(3) { animation-delay: 0.2s; }
+    .shortcuts-panel { animation-delay: 0.3s; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <div class="header">
+      <div class="logo">🎬</div>
+      <div class="header-text">
+        <div class="title">YouTube Enhancer</div>
+        <div class="subtitle">Advanced video controls & ad blocker</div>
+      </div>
+      <div class="status-indicator"></div>
+    </div>
+
+    <!-- Speed Control -->
+    <div class="control-group">
+      <div class="control-header">
+        <div class="control-title">
+          <div class="control-icon">⚡</div>
+          Playback Speed
+        </div>
+        <div class="speed-display" id="speedDisplay">1.0×</div>
+      </div>
+      <div class="control-description">
+        Adjust video playback speed from 0.1× to 3.0× for optimal viewing
+      </div>
+      <div class="speed-slider-container">
+        <input type="range" id="speed" class="speed-slider" min="0.1" max="3.0" step="0.1" value="1.0">
+        <div class="slider-labels">
+          <span>0.1×</span>
+          <span>1.0×</span>
+          <span>2.0×</span>
+          <span>3.0×</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Auto Skip Ads -->
+    <div class="control-group">
+      <div class="control-header">
+        <div class="control-title">
+          <div class="control-icon">�️</div>
+          Auto Skip Ads
+        </div>
+        <div class="toggle-switch">
+          <input type="checkbox" id="skipAds">
+          <span class="toggle-slider"></span>
+        </div>
+      </div>
+      <div class="control-description">
+        Automatically skip YouTube advertisements when detected
+      </div>
+    </div>
+
+    <!-- Action Section -->
+    <div class="action-section">
+      <button class="btn btn-primary" id="save">
+        <span>💾</span>
+        Save Configuration
+      </button>
+      <button class="btn btn-secondary" id="reset">
+        <span>🔄</span>
+        Reset to Defaults
+      </button>
+    </div>
+
+    <!-- Shortcuts Panel -->
+    <div class="shortcuts-panel">
+      <div class="shortcuts-header">
+        <span>⌨️</span>
+        <div class="shortcuts-title">Keyboard Shortcuts</div>
+      </div>
+      <div class="shortcuts-grid">
+        <div class="shortcut-item">
+          <span class="shortcut-desc">Add Bookmark</span>
+          <span class="shortcut-key">P</span>
+        </div>
+        <div class="shortcut-item">
+          <span class="shortcut-desc">Speed Override</span>
+          <span class="shortcut-key">Alt + 1-9</span>
+        </div>
+        <div class="shortcut-item">
+          <span class="shortcut-desc">Toggle Timer</span>
+          <span class="shortcut-key">Alt + R</span>
+        </div>
+        <div class="shortcut-item">
+          <span class="shortcut-desc">Show Help</span>
+          <span class="shortcut-key">Shift + ?</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

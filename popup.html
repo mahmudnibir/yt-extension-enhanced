@@ -1,171 +1,561 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
-  <title>Futuristic Settings</title>
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+  <title>YouTube Speed Controller</title>
   <style>
-    :root {
-      --bg: rgba(255, 255, 255, 0.05);
-      --border: rgba(255, 255, 255, 0.2);
-      --accent: #39ff14;
-      --text: #e0e0e0;
-      --highlight: #00e5ff;
-      --radius: 16px;
-      --transition: 0.3s ease;
-    }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
     body {
-      width: 260px;
-      padding: 20px;
-      font-family: 'Orbitron', sans-serif;
-      background: linear-gradient(135deg, #0d0d0d, #1a1a1a);
-      color: var(--text);
+      width: 420px;
+      height: 600px;
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+      background: #111318;
+      color: #ffffff;
+      position: relative;
+    }
+    
+    /* Layout */
+    .container { display: flex; flex-direction: column; height: 100%; }
+    
+    /* Header */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid #282e39;
+      padding: 12px 16px;
+      background: #1b1f28;
+    }
+    
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: #ffffff;
+    }
+    
+    .logo { width: 32px; height: 32px; color: #135bec; }
+    .logo svg { width: 100%; height: 100%; }
+    
+    h1 { font-size: 16px; font-weight: 700; line-height: 1.2; }
+    
+    #save {
+      background: #135bec;
+      color: white;
+      font-weight: 500;
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 14px;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: background 0.2s;
+    }
+    
+    #save:hover { background: #0d4ec4; }
+    
+    /* Main */
+    main {
+      flex: 1;
+      background: #1b1f28;
+      padding: 16px;
+      overflow-y: auto;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+    
+    main::-webkit-scrollbar {
+      display: none;
+    }
+    
+    section { margin-bottom: 16px; }
+    section:last-child { margin-bottom: 8px; }
+    
+    h2 {
+      color: #ffffff;
+      font-size: 18px;
+      font-weight: 700;
+      padding: 0 8px 8px;
+      margin-bottom: 8px;
+      border-bottom: 1px solid #282e39;
+    }
+    
+    .setting-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      background: #111318;
+      border-radius: 8px;
+      margin-bottom: 8px;
+    }
+    
+    .setting-item-full {
+      justify-content: space-between;
+    }
+    
+    .setting-icon {
       display: flex;
       align-items: center;
       justify-content: center;
-      height: 100vh;
-    }
-    .glass {
-      width: 100%;
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      backdrop-filter: blur(12px);
-      padding: 24px;
-      box-shadow: 0 8px 32px rgba(0,0,0,0.6);
-      display: flex;
-      flex-direction: column;
-      gap: 20px;
-    }
-    .glass h1 {
+      background: rgba(19, 91, 236, 0.1);
+      border-radius: 8px;
+      width: 40px;
+      height: 40px;
+      flex-shrink: 0;
       font-size: 20px;
+    }
+    
+    .setting-content { flex: 1; }
+    
+    .setting-title {
+      color: #ffffff;
+      font-size: 14px;
+      font-weight: 500;
+      margin-bottom: 2px;
+    }
+    
+    .setting-desc {
+      color: #9da6b9;
+      font-size: 12px;
+    }
+    
+    .disabled { opacity: 0.6; }
+    
+    /* Speed Control */
+    .speed-control {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      width: 100%;
+    }
+    
+    #speed {
+      flex: 1;
+      height: 8px;
+      background: #282e39;
+      border-radius: 8px;
+      outline: none;
+      cursor: pointer;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+    
+    #speed::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #135bec;
+      cursor: pointer;
+    }
+    
+    #speed::-moz-range-thumb {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #135bec;
+      cursor: pointer;
+      border: none;
+    }
+    
+    #speedDisplay {
+      color: #ffffff;
+      font-size: 14px;
+      font-weight: 600;
+      min-width: 45px;
+      text-align: right;
+    }
+    
+    /* Toggle Switch */
+    .toggle-label {
+      position: relative;
+      display: flex;
+      height: 24px;
+      width: 44px;
+      cursor: pointer;
+      align-items: center;
+      border-radius: 24px;
+      background: #282e39;
+      padding: 2px;
+      transition: background 0.2s;
+    }
+    
+    .toggle-thumb {
+      height: 20px;
+      width: 20px;
+      border-radius: 50%;
+      background: white;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+      transition: transform 0.2s;
+    }
+    
+    .toggle-input { position: absolute; opacity: 0; }
+    
+    .toggle-input:checked + .toggle-label {
+      background: #135bec;
+    }
+    
+    .toggle-input:checked + .toggle-label .toggle-thumb {
+      transform: translateX(20px);
+    }
+    
+    .toggle-input:disabled + .toggle-label {
+      cursor: not-allowed;
+    }
+    
+    /* Keyboard Shortcut Badge */
+    .kbd-badge {
+      padding: 4px 12px;
+      background: #282e39;
+      color: #ffffff;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+    
+    /* Buttons */
+    .btn-export {
+      width: 100%;
+      background: rgba(19, 91, 236, 0.1);
+      color: #135bec;
+      font-weight: 500;
+      padding: 10px 16px;
+      border-radius: 8px;
+      font-size: 14px;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-center;
+      gap: 8px;
+      transition: background 0.2s;
+    }
+    
+    .btn-export:hover { background: rgba(19, 91, 236, 0.2); }
+    
+    .btn-clear {
+      background: rgba(225, 29, 72, 0.1);
+      color: #e11d48;
+      font-weight: 500;
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 12px;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      transition: background 0.2s;
+    }
+    
+    .btn-clear:hover { background: rgba(225, 29, 72, 0.2); }
+    .btn-clear:disabled { cursor: not-allowed; }
+    
+    .icon-destructive {
+      background: rgba(225, 29, 72, 0.1) !important;
+      color: #e11d48;
+    }
+    
+    /* Info Text */
+    .info-text {
       text-align: center;
-      color: var(--highlight);
+      color: #9da6b9;
+      font-size: 14px;
+      padding: 12px;
+      background: #111318;
+      border-radius: 8px;
       margin-bottom: 8px;
     }
-    label {
+    
+    kbd {
+      padding: 2px 8px;
+      background: #282e39;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+    
+    /* Footer */
+    footer {
+      border-top: 1px solid #282e39;
+      padding: 8px 16px;
+      background: #1b1f28;
+    }
+    
+    .footer-content {
       display: flex;
-      flex-direction: column;
-      font-size: 13px;
-      letter-spacing: 0.5px;
-      position: relative;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
     }
-    /* Range slider */
-    .slider {
-      -webkit-appearance: none;
-      width: 100%;
+    
+    .version { color: #9da6b9; }
+    
+    .status {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: #9da6b9;
+    }
+    
+    .status-dot {
+      width: 6px;
       height: 6px;
-      border-radius: 3px;
-      background: rgba(255,255,255,0.2);
-      outline: none;
-      transition: background var(--transition);
-      margin-top: 8px;
-    }
-    .slider:hover { background: rgba(255,255,255,0.3); }
-    .slider::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      width: 18px; height: 18px;
       border-radius: 50%;
-      background: var(--accent);
-      border: 2px solid var(--highlight);
+      background: #10b981;
+    }
+    
+    /* Chevron Navigation */
+    .scroll-chevron {
+      position: fixed;
+      right: 12px;
+      width: 36px;
+      height: 36px;
+      background: #135bec;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       cursor: pointer;
-      transition: transform var(--transition);
-    }
-    .slider::-webkit-slider-thumb:hover { transform: scale(1.2); }
-    .slider::-moz-range-thumb {
-      width: 18px; height: 18px;
-      border-radius: 50%;
-      background: var(--accent);
-      border: 2px solid var(--highlight);
-      cursor: pointer;
-      transition: transform var(--transition);
-    }
-
-    /* Toggle switch */
-    .toggle {
-      position: relative;
-      display: inline-block;
-      width: 50px; height: 26px;
-      margin-top: 8px;
-    }
-    .toggle input {
-      opacity: 0; width: 0; height: 0;
-    }
-    .slider-toggle {
-      position: absolute;
-      cursor: pointer;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(255,255,255,0.2);
-      border-radius: 26px;
-      transition: background var(--transition);
-      border: 1px solid var(--border);
-    }
-    .slider-toggle:before {
-      position: absolute;
-      content: "";
-      height: 20px; width: 20px;
-      left: 3px; bottom: 3px;
-      background: var(--accent);
-      border-radius: 50%;
-      transition: transform var(--transition);
-      box-shadow: 0 0 6px var(--accent);
-    }
-    .toggle input:checked + .slider-toggle {
-      background: rgba(0,0,0,0.3);
-    }
-    .toggle input:checked + .slider-toggle:before {
-      transform: translateX(24px);
-    }
-
-    /* Button */
-    .btn {
-      width: 100%;
-      padding: 12px 0;
-      text-transform: uppercase;
-      font-weight: bold;
-      font-size: 14px;
-      color: #000;
-      background: linear-gradient(135deg, #39ff14, #00e5ff);
+      transition: all 0.2s ease;
+      z-index: 100;
+      box-shadow: 0 2px 8px rgba(19, 91, 236, 0.4);
       border: none;
-      border-radius: var(--radius);
-      cursor: pointer;
-      transition: transform var(--transition), box-shadow var(--transition);
-      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
     }
-    .btn:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 18px rgba(0,0,0,0.6);
+    
+    .scroll-chevron:hover {
+      background: #0d4ec4;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(19, 91, 236, 0.5);
     }
-
-    /* Labels text */
-    .label-text {
-      margin-bottom: 4px;
-      color: var(--highlight);
+    
+    .scroll-chevron:active {
+      transform: translateY(0);
+      box-shadow: 0 1px 4px rgba(19, 91, 236, 0.3);
+    }
+    
+    .scroll-chevron.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+    
+    .scroll-chevron-up {
+      top: 68px;
+    }
+    
+    .scroll-chevron-down {
+      bottom: 52px;
+    }
+    
+    .chevron-icon {
+      width: 20px;
+      height: 20px;
+      stroke: white;
+      stroke-width: 2.5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      fill: none;
     }
   </style>
 </head>
 <body>
-
-  <div class="glass">
-    <h1>⚙ Settings</h1>
-
-    <label>
-      <span class="label-text">Playback Speed</span>
-      <input type="range" class="slider" min="0.1" max="10" step="0.1" value="1">
-    </label>
-
-    <label>
-      <span class="label-text">Auto Skip Ads</span>
-      <div class="toggle">
-        <input type="checkbox" id="skipAds">
-        <span class="slider-toggle"></span>
+  <button class="scroll-chevron scroll-chevron-up hidden" id="scrollUp" aria-label="Scroll up">
+    <svg class="chevron-icon" viewBox="0 0 24 24">
+      <polyline points="18 15 12 9 6 15"></polyline>
+    </svg>
+  </button>
+  <button class="scroll-chevron scroll-chevron-down" id="scrollDown" aria-label="Scroll down">
+    <svg class="chevron-icon" viewBox="0 0 24 24">
+      <polyline points="6 9 12 15 18 9"></polyline>
+    </svg>
+  </button>
+  <div class="container">
+    <header>
+      <div class="header-left">
+        <div class="logo">
+          <svg fill="none" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+            <path clip-rule="evenodd" d="M24 4H6V17.3333V30.6667H24V44H42V30.6667V17.3333H24V4Z" fill="currentColor" fill-rule="evenodd"></path>
+          </svg>
+        </div>
+        <h1>YouTube Controller</h1>
       </div>
-    </label>
-
-    <button class="btn">Save</button>
+      <button id="save">💾 Save</button>
+    </header>
+    
+    <main id="mainContent">
+      <!-- Speed Control -->
+      <section>
+        <h2>Speed Control</h2>
+        <div class="setting-item">
+          <div class="setting-icon">⚡</div>
+          <div class="setting-content">
+            <div class="setting-title">Playback Speed</div>
+            <div class="speed-control">
+              <input id="speed" type="range" min="0.25" max="20" step="0.25" value="1">
+              <span id="speedDisplay">1.0×</span>
+            </div>
+          </div>
+        </div>
+      </section>
+      
+      <!-- General Settings -->
+      <section>
+        <h2>General Settings</h2>
+        <div class="setting-item setting-item-full">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <div class="setting-icon">🛡️</div>
+            <div class="setting-content">
+              <div class="setting-title">Auto Skip Ads</div>
+              <div class="setting-desc">Automatically skip YouTube advertisements</div>
+            </div>
+          </div>
+          <div>
+            <input id="skipAds" type="checkbox" class="toggle-input">
+            <label for="skipAds" class="toggle-label">
+              <div class="toggle-thumb"></div>
+            </label>
+          </div>
+        </div>
+        
+        <div class="setting-item setting-item-full disabled">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <div class="setting-icon">🎵</div>
+            <div class="setting-content">
+              <div class="setting-title">Pitch Correction</div>
+              <div class="setting-desc">Maintain audio pitch (Coming Soon)</div>
+            </div>
+          </div>
+          <div>
+            <input type="checkbox" class="toggle-input" disabled>
+            <label class="toggle-label">
+              <div class="toggle-thumb"></div>
+            </label>
+          </div>
+        </div>
+      </section>
+      
+      <!-- Keyboard Shortcuts -->
+      <section>
+        <h2>Keyboard Shortcuts</h2>
+        <div class="setting-item setting-item-full">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <div class="setting-icon">📌</div>
+            <div class="setting-title">Add Bookmark</div>
+          </div>
+          <span class="kbd-badge">P</span>
+        </div>
+        <div class="setting-item setting-item-full">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <div class="setting-icon">⏮️</div>
+            <div class="setting-title">Previous Bookmark</div>
+          </div>
+          <span class="kbd-badge">[</span>
+        </div>
+        <div class="setting-item setting-item-full">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <div class="setting-icon">⏭️</div>
+            <div class="setting-title">Next Bookmark</div>
+          </div>
+          <span class="kbd-badge">]</span>
+        </div>
+      </section>
+      
+      <!-- Bookmarks -->
+      <section>
+        <h2>Bookmarks</h2>
+        <div class="info-text">
+          Press <kbd>P</kbd> on any video to add bookmarks
+        </div>
+        <button class="btn-export">📤 Export Bookmarks</button>
+      </section>
+      
+      <!-- Data & Memory -->
+      <section>
+        <h2>Data & Memory</h2>
+        <div class="setting-item setting-item-full disabled">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <div class="setting-icon">💾</div>
+            <div class="setting-content">
+              <div class="setting-title">Remember Speed Per Video</div>
+              <div class="setting-desc">Coming Soon</div>
+            </div>
+          </div>
+          <div>
+            <input type="checkbox" class="toggle-input" disabled>
+            <label class="toggle-label">
+              <div class="toggle-thumb"></div>
+            </label>
+          </div>
+        </div>
+        <div class="setting-item setting-item-full disabled">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <div class="setting-icon icon-destructive">⚠️</div>
+            <div class="setting-content">
+              <div class="setting-title">Clear All Data</div>
+              <div class="setting-desc">Remove saved settings</div>
+            </div>
+          </div>
+          <button class="btn-clear" disabled>⚠️ Clear</button>
+        </div>
+      </section>
+    </main>
+    
+    <footer>
+      <div class="footer-content">
+        <span class="version">v1.2</span>
+        <div class="status">
+          <div class="status-dot"></div>
+          Active
+        </div>
+      </div>
+    </footer>
   </div>
+  
+  <script>
+    // Chevron scroll controls
+    const mainContent = document.getElementById('mainContent');
+    const scrollUp = document.getElementById('scrollUp');
+    const scrollDown = document.getElementById('scrollDown');
 
+    function updateChevronVisibility() {
+      const isAtTop = mainContent.scrollTop <= 5;
+      const isAtBottom = Math.abs(mainContent.scrollHeight - mainContent.scrollTop - mainContent.clientHeight) <= 5;
+      
+      if (isAtTop) {
+        scrollUp.classList.add('hidden');
+      } else {
+        scrollUp.classList.remove('hidden');
+      }
+      
+      if (isAtBottom) {
+        scrollDown.classList.add('hidden');
+      } else {
+        scrollDown.classList.remove('hidden');
+      }
+    }
+
+    scrollUp.addEventListener('click', () => {
+      mainContent.scrollBy({ top: -180, behavior: 'smooth' });
+      setTimeout(updateChevronVisibility, 300);
+    });
+
+    scrollDown.addEventListener('click', () => {
+      mainContent.scrollBy({ top: 180, behavior: 'smooth' });
+      setTimeout(updateChevronVisibility, 300);
+    });
+
+    mainContent.addEventListener('scroll', updateChevronVisibility);
+    
+    // Initial check
+    setTimeout(updateChevronVisibility, 100);
+  </script>
+  <script src="popup.js"></script>
 </body>
 </html>

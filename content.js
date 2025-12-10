@@ -29,6 +29,7 @@
     setInterval(applySettings, 1000); // Adjust speed periodically
 
     addRemainingTimeOverlay(); // Add the remaining time overlay
+    addBookmarkButton(); // Add bookmark button to player controls
   };
 
   const handleKeyPress = (e) => {
@@ -102,6 +103,28 @@
         manualOverride = false;
       }, 5000);
     }
+
+    // Increase speed with + key
+    if (e.key === '+' || e.key === '=') {
+      let currentSpeed = parseFloat(video.playbackRate.toFixed(2));
+      let newSpeed = Math.min(20, currentSpeed + 0.25);
+      newSpeed = parseFloat(newSpeed.toFixed(2));
+      video.playbackRate = newSpeed;
+      showSpeedOverlay(newSpeed);
+      chrome.storage.sync.set({ speed: newSpeed.toString() });
+      console.log(`Speed increased to ${newSpeed}x`);
+    }
+
+    // Decrease speed with - key
+    if (e.key === '-' || e.key === '_') {
+      let currentSpeed = parseFloat(video.playbackRate.toFixed(2));
+      let newSpeed = Math.max(0.25, currentSpeed - 0.25);
+      newSpeed = parseFloat(newSpeed.toFixed(2));
+      video.playbackRate = newSpeed;
+      showSpeedOverlay(newSpeed);
+      chrome.storage.sync.set({ speed: newSpeed.toString() });
+      console.log(`Speed decreased to ${newSpeed}x`);
+    }
   };
 
   // Apply speed settings
@@ -126,12 +149,22 @@
     marker.className = "yt-bookmark-marker";
     marker.style.left = `${(time / video.duration) * 100}%`;
     marker.style.position = "absolute";
-    marker.style.width = "4px";
-    marker.style.height = "100%";
-    marker.style.backgroundColor = "#00BCD4";
+    marker.style.width = "0";
+    marker.style.height = "0";
     marker.style.cursor = "pointer";
+    marker.style.zIndex = "100";
+    marker.style.transform = "translateX(-50%)";
     marker.title = label ? `📌 ${label} (${formatTime(time)})` : `📌 Bookmark at ${formatTime(time)}`;
     marker.dataset.time = time;
+
+    // Add bookmark ribbon icon in circle (aligned with timeline)
+    marker.innerHTML = `
+      <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 16px; height: 16px; background: #ff4444; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">
+        <svg viewBox="0 0 24 24" width="10" height="10" style="fill: white;">
+          <path d="M17 3H7c-1.1 0-1.99.9-1.99 2L5 21l7-3 7 3V5c0-1.1-.9-2-2-2z"></path>
+        </svg>
+      </div>
+    `;
 
     marker.addEventListener("click", () => {
       video.currentTime = time;
@@ -278,6 +311,101 @@
     }
   });
   
+  // Add bookmark button to YouTube player controls
+  function addBookmarkButton() {
+    const video = document.querySelector('video');
+    if (!video) {
+      setTimeout(addBookmarkButton, 1000);
+      return;
+    }
+
+    // Wait for controls to be available
+    const rightControls = document.querySelector('.ytp-right-controls');
+    if (!rightControls) {
+      setTimeout(addBookmarkButton, 1000);
+      return;
+    }
+
+    // Don't add if already exists
+    if (document.getElementById('yt-bookmark-btn')) return;
+
+    const bookmarkBtn = document.createElement('button');
+    bookmarkBtn.id = 'yt-bookmark-btn';
+    bookmarkBtn.className = 'ytp-button';
+    bookmarkBtn.title = 'Add Bookmark (P)';
+    bookmarkBtn.setAttribute('aria-label', 'Add Bookmark');
+    
+    // Bookmark ribbon/tie icon SVG (standard bookmark shape) - MUCH LARGER
+    bookmarkBtn.innerHTML = `
+      <svg height="36px" version="1.1" viewBox="0 0 24 24" width="36px">
+        <path d="M17 3H7c-1.1 0-1.99.9-1.99 2L5 21l7-3 7 3V5c0-1.1-.9-2-2-2z" fill="white"></path>
+      </svg>
+    `;
+
+    Object.assign(bookmarkBtn.style, {
+      width: '48px',
+      height: '48px',
+      padding: '0',
+      background: 'transparent',
+      border: 'none',
+      cursor: 'pointer',
+      opacity: '1',
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      position: 'relative',
+      top: '-2px'
+    });
+
+    bookmarkBtn.addEventListener('mouseover', () => {
+      bookmarkBtn.style.opacity = '1';
+    });
+
+    bookmarkBtn.addEventListener('mouseout', () => {
+      bookmarkBtn.style.opacity = '0.9';
+    });
+
+    bookmarkBtn.addEventListener('click', () => {
+      const videoId = new URLSearchParams(window.location.search).get("v");
+      if (!videoId) return;
+      const key = `yt_bm_${videoId}`;
+      const time = Math.floor(video.currentTime);
+      
+      chrome.storage.local.get([key], (res) => {
+        let bms = Array.isArray(res[key]) ? res[key] : [];
+        if (!bms.some(bm => bm.time === time)) {
+          const newBookmark = { time, label: "" };
+          bms.push(newBookmark);
+          bms.sort((a, b) => a.time - b.time);
+          chrome.storage.local.set({ [key]: bms }, () => {
+            bookmarks = bms;
+            addBookmarkMarker(time);
+            showBookmarkOverlay(`📌 Bookmarked at ${formatTime(time)}`);
+            currentIndex = bms.findIndex(b => b.time === time);
+          });
+        }
+      });
+    });
+
+    // Insert before autoplay button (to the left of it)
+    try {
+      // Look for common right control buttons in order
+      const autoplayBtn = rightControls.querySelector('.ytp-button[data-tooltip-target-id="ytp-autonav-toggle-button"]');
+      const settingsBtn = rightControls.querySelector('.ytp-settings-button');
+      
+      if (autoplayBtn && autoplayBtn.parentNode === rightControls) {
+        rightControls.insertBefore(bookmarkBtn, autoplayBtn);
+      } else if (settingsBtn && settingsBtn.parentNode === rightControls) {
+        rightControls.insertBefore(bookmarkBtn, settingsBtn);
+      } else {
+        // Insert as first child if we can't find reference buttons
+        rightControls.insertBefore(bookmarkBtn, rightControls.firstChild);
+      }
+    } catch (err) {
+      console.error('Bookmark button insertion error:', err);
+      rightControls.appendChild(bookmarkBtn);
+    }
+  }
 
   // Observe URL changes
   const observeUrlChange = () => {
