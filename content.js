@@ -7,6 +7,10 @@
   let manualOverride = false;
   let overrideTimeout;
   let deletedBookmarks = [];
+  
+  // Time saved tracking
+  let totalTimeSaved = 0;
+  let lastUpdateTime = 0;
 
   const init = () => {
     video = document.querySelector("video");
@@ -28,9 +32,15 @@
 
     document.addEventListener("keydown", handleKeyPress);
     setInterval(applySettings, 1000); // Adjust speed periodically
+    setInterval(updateTimeSaved, 1000); // Track time saved
 
     addRemainingTimeOverlay(); // Add the remaining time overlay
     addBookmarkButton(); // Add bookmark button to player controls
+    
+    // Load saved time from storage
+    chrome.storage.local.get(['totalTimeSaved'], (res) => {
+      totalTimeSaved = res.totalTimeSaved || 0;
+    });
   };
 
   const handleKeyPress = (e) => {
@@ -397,9 +407,16 @@
       padding: '16px 20px',
       borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
       display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'center',
+      flexDirection: 'column',
+      gap: '12px',
       background: 'rgba(0, 0, 0, 0.3)'
+    });
+
+    const headerTop = document.createElement('div');
+    Object.assign(headerTop.style, {
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center'
     });
 
     const title = document.createElement('div');
@@ -408,6 +425,26 @@
         <path d="M17 3H7c-1.1 0-1.99.9-1.99 2L5 21l7-3 7 3V5c0-1.1-.9-2-2-2zm0 15l-5-2.18L7 18V5h10v13z"></path>
       </svg>
       <span style="color: white; font-size: 16px; font-weight: 600; vertical-align: middle;">Bookmarks</span>
+    `;
+    
+    const timeSavedDiv = document.createElement('div');
+    Object.assign(timeSavedDiv.style, {
+      display: 'flex',
+      alignItems: 'center',
+      gap: '8px',
+      padding: '10px 14px',
+      background: 'rgba(16, 185, 129, 0.1)',
+      border: '1px solid rgba(16, 185, 129, 0.2)',
+      borderRadius: '8px',
+      fontSize: '13px',
+      color: 'rgba(16, 185, 129, 0.95)'
+    });
+    timeSavedDiv.innerHTML = `
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"></circle>
+        <polyline points="12 6 12 12 16 14"></polyline>
+      </svg>
+      <span style="font-weight: 500;">Time Saved: <span id="time-saved-display">${formatTimeSaved(totalTimeSaved)}</span></span>
     `;
 
     const addBtn = document.createElement('button');
@@ -561,8 +598,11 @@
     headerRight.appendChild(undoBtn);
     headerRight.appendChild(closeBtn);
 
-    header.appendChild(title);
-    header.appendChild(headerRight);
+    headerTop.appendChild(title);
+    headerTop.appendChild(headerRight);
+    
+    header.appendChild(headerTop);
+    header.appendChild(timeSavedDiv);
 
     // Bookmark list container
     const listContainer = document.createElement('div');
@@ -853,6 +893,42 @@
     });
   }
 
+  // Update time saved tracker
+  function updateTimeSaved() {
+    if (!video || video.paused) return;
+    
+    const now = Date.now();
+    if (lastUpdateTime === 0) {
+      lastUpdateTime = now;
+      return;
+    }
+    
+    const currentSpeed = video.playbackRate;
+    if (currentSpeed > 1) {
+      const elapsed = (now - lastUpdateTime) / 1000;
+      const timeSaved = elapsed * (currentSpeed - 1) / currentSpeed;
+      totalTimeSaved += timeSaved;
+      
+      chrome.storage.local.set({ totalTimeSaved });
+    }
+    
+    lastUpdateTime = now;
+    
+    const timeSavedDisplay = document.getElementById('time-saved-display');
+    if (timeSavedDisplay) {
+      timeSavedDisplay.textContent = formatTimeSaved(totalTimeSaved);
+    }
+  }
+  
+  // Format time saved for display
+  function formatTimeSaved(seconds) {
+    if (seconds < 60) return `${Math.floor(seconds)}s`;
+    if (seconds < 3600) return `${Math.floor(seconds / 60)}m ${Math.floor(seconds % 60)}s`;
+    const hours = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    return `${hours}h ${mins}m`;
+  }
+
   // Update undo button state
   function updateUndoButton() {
     const undoBtn = document.getElementById('yt-undo-btn');
@@ -977,8 +1053,12 @@
       border: '1px solid rgba(255, 255, 255, 0.1)',
       borderRadius: '12px',
       padding: '24px',
-      maxWidth: '500px',
-      color: 'white'
+      maxWidth: '480px',
+      maxHeight: '85vh',
+      overflowY: 'auto',
+      color: 'white',
+      scrollbarWidth: 'thin',
+      scrollbarColor: 'rgba(255, 255, 255, 0.2) transparent'
     });
 
     helpBox.innerHTML = `
