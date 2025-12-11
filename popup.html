@@ -3,16 +3,16 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
-  <title>YouTube Speed Controller</title>
+  <title>YouTube Enhanced</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     
     body {
-      width: 420px;
-      height: 600px;
+      width: 380px;
+      height: 580px;
       overflow: hidden;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-      background: #111318;
+      background: linear-gradient(135deg, #0f0f0f 0%, #1a1a1a 100%);
       color: #ffffff;
       position: relative;
     }
@@ -25,9 +25,10 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      border-bottom: 1px solid #282e39;
-      padding: 12px 16px;
-      background: #1b1f28;
+      padding: 20px;
+      background: rgba(30, 30, 30, 0.6);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
     }
     
     .header-left {
@@ -37,62 +38,93 @@
       color: #ffffff;
     }
     
-    .logo { width: 32px; height: 32px; color: #135bec; }
-    .logo svg { width: 100%; height: 100%; }
+    .logo { 
+      width: 36px; 
+      height: 36px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 6px;
+    }
+    .logo svg { width: 100%; height: 100%; filter: invert(1); }
     
-    h1 { font-size: 16px; font-weight: 700; line-height: 1.2; }
+    h1 { font-size: 18px; font-weight: 600; line-height: 1.2; letter-spacing: -0.3px; }
     
     #save {
-      background: #135bec;
+      background: rgba(255, 255, 255, 0.1);
       color: white;
       font-weight: 500;
-      padding: 6px 12px;
+      padding: 8px 16px;
       border-radius: 8px;
-      font-size: 14px;
-      border: none;
+      font-size: 13px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
       cursor: pointer;
       display: flex;
       align-items: center;
       gap: 6px;
-      transition: background 0.2s;
+      transition: all 0.2s;
     }
     
-    #save:hover { background: #0d4ec4; }
+    #save:hover { 
+      background: rgba(255, 255, 255, 0.15);
+      transform: translateY(-1px);
+    }
     
     /* Main */
     main {
       flex: 1;
-      background: #1b1f28;
+      background: transparent;
       padding: 16px;
       overflow-y: auto;
-      scrollbar-width: none;
-      -ms-overflow-style: none;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
     }
     
     main::-webkit-scrollbar {
-      display: none;
+      width: 6px;
     }
     
-    section { margin-bottom: 16px; }
+    main::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    
+    main::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 3px;
+    }
+    
+    section { margin-bottom: 20px; }
     section:last-child { margin-bottom: 8px; }
     
     h2 {
-      color: #ffffff;
-      font-size: 18px;
-      font-weight: 700;
-      padding: 0 8px 8px;
-      margin-bottom: 8px;
-      border-bottom: 1px solid #282e39;
+      color: rgba(255, 255, 255, 0.9);
+      font-size: 13px;
+      font-weight: 600;
+      padding: 0 4px 8px;
+      margin-bottom: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
     }
     
     .setting-item {
       display: flex;
       align-items: center;
       gap: 12px;
-      padding: 12px;
-      background: #111318;
-      border-radius: 8px;
+      padding: 14px;
+      background: rgba(255, 255, 255, 0.03);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 10px;
       margin-bottom: 8px;
+      transition: all 0.2s;
+    }
+    
+    .setting-item:hover {
+      background: rgba(255, 255, 255, 0.05);
+      border-color: rgba(255, 255, 255, 0.1);
     }
     
     .setting-item-full {
@@ -103,29 +135,29 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      background: rgba(19, 91, 236, 0.1);
+      background: rgba(255, 255, 255, 0.05);
       border-radius: 8px;
-      width: 40px;
-      height: 40px;
+      width: 36px;
+      height: 36px;
       flex-shrink: 0;
-      font-size: 20px;
+      font-size: 18px;
     }
     
     .setting-content { flex: 1; }
     
     .setting-title {
-      color: #ffffff;
+      color: rgba(255, 255, 255, 0.95);
       font-size: 14px;
       font-weight: 500;
-      margin-bottom: 2px;
+      margin-bottom: 3px;
     }
     
     .setting-desc {
-      color: #9da6b9;
-      font-size: 12px;
+      color: rgba(255, 255, 255, 0.5);
+      font-size: 11px;
     }
     
-    .disabled { opacity: 0.6; }
+    .disabled { opacity: 0.4; pointer-events: none; }
     
     /* Speed Control */
     .speed-control {
@@ -137,9 +169,9 @@
     
     #speed {
       flex: 1;
-      height: 8px;
-      background: #282e39;
-      border-radius: 8px;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 6px;
       outline: none;
       cursor: pointer;
       -webkit-appearance: none;
@@ -149,27 +181,29 @@
     #speed::-webkit-slider-thumb {
       -webkit-appearance: none;
       appearance: none;
-      width: 18px;
-      height: 18px;
+      width: 16px;
+      height: 16px;
       border-radius: 50%;
-      background: #135bec;
+      background: white;
       cursor: pointer;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
     }
     
     #speed::-moz-range-thumb {
-      width: 18px;
-      height: 18px;
+      width: 16px;
+      height: 16px;
       border-radius: 50%;
-      background: #135bec;
+      background: white;
       cursor: pointer;
       border: none;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
     }
     
     #speedDisplay {
-      color: #ffffff;
-      font-size: 14px;
+      color: rgba(255, 255, 255, 0.95);
+      font-size: 13px;
       font-weight: 600;
-      min-width: 45px;
+      min-width: 42px;
       text-align: right;
     }
     
@@ -177,33 +211,33 @@
     .toggle-label {
       position: relative;
       display: flex;
-      height: 24px;
-      width: 44px;
+      height: 22px;
+      width: 40px;
       cursor: pointer;
       align-items: center;
-      border-radius: 24px;
-      background: #282e39;
+      border-radius: 22px;
+      background: rgba(255, 255, 255, 0.1);
       padding: 2px;
-      transition: background 0.2s;
+      transition: all 0.2s;
     }
     
     .toggle-thumb {
-      height: 20px;
-      width: 20px;
+      height: 18px;
+      width: 18px;
       border-radius: 50%;
       background: white;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
       transition: transform 0.2s;
     }
     
     .toggle-input { position: absolute; opacity: 0; }
     
     .toggle-input:checked + .toggle-label {
-      background: #135bec;
+      background: rgba(255, 255, 255, 0.2);
     }
     
     .toggle-input:checked + .toggle-label .toggle-thumb {
-      transform: translateX(20px);
+      transform: translateX(18px);
     }
     
     .toggle-input:disabled + .toggle-label {
@@ -212,97 +246,110 @@
     
     /* Keyboard Shortcut Badge */
     .kbd-badge {
-      padding: 4px 12px;
-      background: #282e39;
-      color: #ffffff;
-      border-radius: 4px;
+      padding: 6px 12px;
+      background: rgba(255, 255, 255, 0.08);
+      color: rgba(255, 255, 255, 0.9);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 6px;
       font-size: 12px;
-      font-weight: 500;
+      font-weight: 600;
+      font-family: monospace;
     }
     
     /* Buttons */
     .btn-export {
       width: 100%;
-      background: rgba(19, 91, 236, 0.1);
-      color: #135bec;
+      background: rgba(255, 255, 255, 0.06);
+      color: rgba(255, 255, 255, 0.9);
       font-weight: 500;
-      padding: 10px 16px;
-      border-radius: 8px;
-      font-size: 14px;
-      border: none;
+      padding: 12px 16px;
+      border-radius: 10px;
+      font-size: 13px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
       cursor: pointer;
       display: flex;
       align-items: center;
-      justify-center;
+      justify-content: center;
       gap: 8px;
-      transition: background 0.2s;
+      transition: all 0.2s;
     }
     
-    .btn-export:hover { background: rgba(19, 91, 236, 0.2); }
+    .btn-export:hover { 
+      background: rgba(255, 255, 255, 0.1);
+      transform: translateY(-1px);
+    }
     
     .btn-clear {
-      background: rgba(225, 29, 72, 0.1);
-      color: #e11d48;
+      background: rgba(239, 68, 68, 0.1);
+      color: rgba(239, 68, 68, 0.9);
       font-weight: 500;
-      padding: 6px 12px;
+      padding: 8px 12px;
       border-radius: 8px;
       font-size: 12px;
-      border: none;
+      border: 1px solid rgba(239, 68, 68, 0.2);
       cursor: pointer;
       display: flex;
       align-items: center;
-      gap: 4px;
-      transition: background 0.2s;
+      gap: 6px;
+      transition: all 0.2s;
     }
     
-    .btn-clear:hover { background: rgba(225, 29, 72, 0.2); }
-    .btn-clear:disabled { cursor: not-allowed; }
+    .btn-clear:hover { 
+      background: rgba(239, 68, 68, 0.15);
+      transform: translateY(-1px);
+    }
+    .btn-clear:disabled { cursor: not-allowed; opacity: 0.4; }
     
     .icon-destructive {
-      background: rgba(225, 29, 72, 0.1) !important;
-      color: #e11d48;
+      background: rgba(239, 68, 68, 0.08) !important;
+      color: rgba(239, 68, 68, 0.9);
     }
     
     /* Info Text */
     .info-text {
       text-align: center;
-      color: #9da6b9;
-      font-size: 14px;
-      padding: 12px;
-      background: #111318;
-      border-radius: 8px;
-      margin-bottom: 8px;
+      color: rgba(255, 255, 255, 0.5);
+      font-size: 12px;
+      padding: 14px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 10px;
+      margin-bottom: 10px;
     }
     
     kbd {
-      padding: 2px 8px;
-      background: #282e39;
+      padding: 3px 8px;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.1);
       border-radius: 4px;
-      font-size: 12px;
-      font-weight: 500;
+      font-size: 11px;
+      font-weight: 600;
+      font-family: monospace;
+      color: rgba(255, 255, 255, 0.9);
     }
     
     /* Footer */
     footer {
-      border-top: 1px solid #282e39;
-      padding: 8px 16px;
-      background: #1b1f28;
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+      padding: 12px 20px;
+      background: rgba(30, 30, 30, 0.6);
+      backdrop-filter: blur(10px);
     }
     
     .footer-content {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      font-size: 12px;
+      font-size: 11px;
     }
     
-    .version { color: #9da6b9; }
+    .version { color: rgba(255, 255, 255, 0.4); }
     
     .status {
       display: flex;
       align-items: center;
       gap: 6px;
-      color: #9da6b9;
+      color: rgba(255, 255, 255, 0.5);
     }
     
     .status-dot {
@@ -310,15 +357,18 @@
       height: 6px;
       border-radius: 50%;
       background: #10b981;
+      box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
     }
     
     /* Chevron Navigation */
     .scroll-chevron {
       position: fixed;
-      right: 12px;
-      width: 36px;
-      height: 36px;
-      background: #135bec;
+      right: 16px;
+      width: 32px;
+      height: 32px;
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
       border-radius: 8px;
       display: flex;
       align-items: center;
@@ -326,19 +376,18 @@
       cursor: pointer;
       transition: all 0.2s ease;
       z-index: 100;
-      box-shadow: 0 2px 8px rgba(19, 91, 236, 0.4);
-      border: none;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
     }
     
     .scroll-chevron:hover {
-      background: #0d4ec4;
-      transform: translateY(-1px);
-      box-shadow: 0 4px 12px rgba(19, 91, 236, 0.5);
+      background: rgba(255, 255, 255, 0.15);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
     }
     
     .scroll-chevron:active {
       transform: translateY(0);
-      box-shadow: 0 1px 4px rgba(19, 91, 236, 0.3);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
     }
     
     .scroll-chevron.hidden {
@@ -347,16 +396,16 @@
     }
     
     .scroll-chevron-up {
-      top: 68px;
+      top: 76px;
     }
     
     .scroll-chevron-down {
-      bottom: 52px;
+      bottom: 56px;
     }
     
     .chevron-icon {
-      width: 20px;
-      height: 20px;
+      width: 18px;
+      height: 18px;
       stroke: white;
       stroke-width: 2.5;
       stroke-linecap: round;
@@ -380,13 +429,18 @@
     <header>
       <div class="header-left">
         <div class="logo">
-          <svg fill="none" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
-            <path clip-rule="evenodd" d="M24 4H6V17.3333V30.6667H24V44H42V30.6667V17.3333H24V4Z" fill="currentColor" fill-rule="evenodd"></path>
+          <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
           </svg>
         </div>
-        <h1>YouTube Controller</h1>
+        <h1>YouTube Enhanced</h1>
       </div>
-      <button id="save">💾 Save</button>
+      <button id="save">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="20 6 9 17 4 12"></polyline>
+        </svg>
+        Save
+      </button>
     </header>
     
     <main id="mainContent">
@@ -394,7 +448,12 @@
       <section>
         <h2>Speed Control</h2>
         <div class="setting-item">
-          <div class="setting-icon">⚡</div>
+          <div class="setting-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+          </div>
           <div class="setting-content">
             <div class="setting-title">Playback Speed</div>
             <div class="speed-control">
@@ -410,7 +469,11 @@
         <h2>General Settings</h2>
         <div class="setting-item setting-item-full">
           <div style="display: flex; align-items: center; gap: 12px;">
-            <div class="setting-icon">🛡️</div>
+            <div class="setting-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+              </svg>
+            </div>
             <div class="setting-content">
               <div class="setting-title">Auto Skip Ads</div>
               <div class="setting-desc">Automatically skip YouTube advertisements</div>
@@ -426,7 +489,13 @@
         
         <div class="setting-item setting-item-full disabled">
           <div style="display: flex; align-items: center; gap: 12px;">
-            <div class="setting-icon">🎵</div>
+            <div class="setting-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M9 18V5l12-2v13"></path>
+                <circle cx="6" cy="18" r="3"></circle>
+                <circle cx="18" cy="16" r="3"></circle>
+              </svg>
+            </div>
             <div class="setting-content">
               <div class="setting-title">Pitch Correction</div>
               <div class="setting-desc">Maintain audio pitch (Coming Soon)</div>
@@ -446,21 +515,35 @@
         <h2>Keyboard Shortcuts</h2>
         <div class="setting-item setting-item-full">
           <div style="display: flex; align-items: center; gap: 12px;">
-            <div class="setting-icon">📌</div>
+            <div class="setting-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+              </svg>
+            </div>
             <div class="setting-title">Add Bookmark</div>
           </div>
           <span class="kbd-badge">P</span>
         </div>
         <div class="setting-item setting-item-full">
           <div style="display: flex; align-items: center; gap: 12px;">
-            <div class="setting-icon">⏮️</div>
+            <div class="setting-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="19 20 9 12 19 4 19 20"></polygon>
+                <line x1="5" y1="19" x2="5" y2="5"></line>
+              </svg>
+            </div>
             <div class="setting-title">Previous Bookmark</div>
           </div>
           <span class="kbd-badge">[</span>
         </div>
         <div class="setting-item setting-item-full">
           <div style="display: flex; align-items: center; gap: 12px;">
-            <div class="setting-icon">⏭️</div>
+            <div class="setting-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="5 4 15 12 5 20 5 4"></polygon>
+                <line x1="19" y1="5" x2="19" y2="19"></line>
+              </svg>
+            </div>
             <div class="setting-title">Next Bookmark</div>
           </div>
           <span class="kbd-badge">]</span>
@@ -473,7 +556,14 @@
         <div class="info-text">
           Press <kbd>P</kbd> on any video to add bookmarks
         </div>
-        <button class="btn-export">📤 Export Bookmarks</button>
+        <button class="btn-export">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="17 8 12 3 7 8"></polyline>
+            <line x1="12" y1="3" x2="12" y2="15"></line>
+          </svg>
+          Export Bookmarks
+        </button>
       </section>
       
       <!-- Data & Memory -->
@@ -481,7 +571,13 @@
         <h2>Data & Memory</h2>
         <div class="setting-item setting-item-full disabled">
           <div style="display: flex; align-items: center; gap: 12px;">
-            <div class="setting-icon">💾</div>
+            <div class="setting-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                <polyline points="7 3 7 8 15 8"></polyline>
+              </svg>
+            </div>
             <div class="setting-content">
               <div class="setting-title">Remember Speed Per Video</div>
               <div class="setting-desc">Coming Soon</div>
@@ -496,13 +592,23 @@
         </div>
         <div class="setting-item setting-item-full disabled">
           <div style="display: flex; align-items: center; gap: 12px;">
-            <div class="setting-icon icon-destructive">⚠️</div>
+            <div class="setting-icon icon-destructive">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 6h18"></path>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+              </svg>
+            </div>
             <div class="setting-content">
               <div class="setting-title">Clear All Data</div>
               <div class="setting-desc">Remove saved settings</div>
             </div>
           </div>
-          <button class="btn-clear" disabled>⚠️ Clear</button>
+          <button class="btn-clear" disabled>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="3 6 5 6 21 6"></polyline>
+            </svg>
+            Clear
+          </button>
         </div>
       </section>
     </main>
