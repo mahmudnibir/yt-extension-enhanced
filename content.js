@@ -751,8 +751,8 @@
     const bookmarkBtn = document.createElement('button');
     bookmarkBtn.id = 'yt-bookmark-btn';
     bookmarkBtn.className = 'ytp-button';
-    bookmarkBtn.title = 'Add Bookmark (P)';
-    bookmarkBtn.setAttribute('aria-label', 'Add Bookmark');
+    bookmarkBtn.title = 'Bookmarks (P to add)';
+    bookmarkBtn.setAttribute('aria-label', 'Open Bookmarks');
     
     // Bookmark ribbon/tie icon SVG (outline style) - MUCH LARGER
     bookmarkBtn.innerHTML = `
@@ -816,6 +816,19 @@
     const observer = new MutationObserver(() => {
       if (location.href !== oldHref) {
         oldHref = location.href;
+        
+        // Clear old bookmarks and markers
+        bookmarks = [];
+        currentIndex = -1;
+        storageKey = null;
+        deletedBookmarks = [];
+        document.querySelectorAll(".yt-bookmark-marker").forEach(el => el.remove());
+        
+        // Close bookmark panel if open
+        const panel = document.getElementById('yt-bookmark-panel');
+        if (panel) panel.remove();
+        
+        // Reinitialize for new video
         setTimeout(init, 1000);
       }
     });
