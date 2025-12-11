@@ -46,7 +46,6 @@
         bookmarks.sort((a, b) => a.time - b.time);
         chrome.storage.local.set({ [storageKey]: bookmarks }, () => {
           addBookmarkMarker(time);
-          showBookmarkOverlay(`📌 Bookmarked at ${formatTime(time)}`);
           currentIndex = bookmarks.findIndex(b => b.time === time);
         });
       }
@@ -365,15 +364,20 @@
     // Add custom scrollbar styles
     const style = document.createElement('style');
     style.textContent = `
+      #yt-bookmark-list {
+        overflow-y: scroll;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+      }
       #yt-bookmark-list::-webkit-scrollbar {
-        width: 4px;
+        width: 6px;
       }
       #yt-bookmark-list::-webkit-scrollbar-track {
         background: transparent;
       }
       #yt-bookmark-list::-webkit-scrollbar-thumb {
         background: rgba(255, 255, 255, 0.3);
-        border-radius: 2px;
+        border-radius: 3px;
         min-height: 30px;
       }
       #yt-bookmark-list::-webkit-scrollbar-thumb:hover {
@@ -383,10 +387,6 @@
         display: none;
         height: 0;
         width: 0;
-      }
-      #yt-bookmark-list {
-        scrollbar-width: thin;
-        scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
       }
     `;
     document.head.appendChild(style);
@@ -545,7 +545,6 @@
       bookmarks.sort((a, b) => a.time - b.time);
       chrome.storage.local.set({ [storageKey]: bookmarks }, () => {
         addBookmarkMarker(time);
-        showBookmarkOverlay(`📌 Bookmarked at ${formatTime(time)}`);
         currentIndex = bookmarks.findIndex(b => b.time === time);
         refreshBookmarkList();
       });
