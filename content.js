@@ -432,6 +432,76 @@
     addBtn.onmouseout = () => addBtn.style.background = 'rgba(255, 255, 255, 0.1)';
     addBtn.onclick = () => addBookmarkAtCurrentTime();
 
+    const exportBtn = document.createElement('button');
+    exportBtn.innerHTML = `
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+        <polyline points="17 8 12 3 7 8"></polyline>
+        <line x1="12" y1="3" x2="12" y2="15"></line>
+      </svg>
+    `;
+    Object.assign(exportBtn.style, {
+      background: 'rgba(255, 255, 255, 0.1)',
+      border: 'none',
+      borderRadius: '6px',
+      padding: '8px',
+      cursor: 'pointer',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      transition: 'background 0.2s'
+    });
+    exportBtn.title = 'Export bookmarks';
+    exportBtn.onmouseover = () => exportBtn.style.background = 'rgba(255, 255, 255, 0.2)';
+    exportBtn.onmouseout = () => exportBtn.style.background = 'rgba(255, 255, 255, 0.1)';
+    exportBtn.onclick = () => exportBookmarks();
+
+    const importBtn = document.createElement('button');
+    importBtn.innerHTML = `
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+        <polyline points="7 10 12 15 17 10"></polyline>
+        <line x1="12" y1="15" x2="12" y2="3"></line>
+      </svg>
+    `;
+    Object.assign(importBtn.style, {
+      background: 'rgba(255, 255, 255, 0.1)',
+      border: 'none',
+      borderRadius: '6px',
+      padding: '8px',
+      cursor: 'pointer',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      transition: 'background 0.2s'
+    });
+    importBtn.title = 'Import bookmarks';
+    importBtn.onmouseover = () => importBtn.style.background = 'rgba(255, 255, 255, 0.2)';
+    importBtn.onmouseout = () => importBtn.style.background = 'rgba(255, 255, 255, 0.1)';
+    importBtn.onclick = () => importBookmarks();
+
+    const helpBtn = document.createElement('button');
+    helpBtn.innerHTML = `
+      <svg viewBox="0 0 24 24" width="20" height="20" style="fill: white;">
+        <path d="M11 18h2v-2h-2v2zm1-16C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm0-14c-2.21 0-4 1.79-4 4h2c0-1.1.9-2 2-2s2 .9 2 2c0 2-3 1.75-3 5h2c0-2.25 3-2.5 3-5 0-2.21-1.79-4-4-4z"></path>
+      </svg>
+    `;
+    Object.assign(helpBtn.style, {
+      background: 'rgba(255, 255, 255, 0.1)',
+      border: 'none',
+      borderRadius: '6px',
+      padding: '8px',
+      cursor: 'pointer',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      transition: 'background 0.2s'
+    });
+    helpBtn.title = 'Help & Shortcuts';
+    helpBtn.onmouseover = () => helpBtn.style.background = 'rgba(255, 255, 255, 0.2)';
+    helpBtn.onmouseout = () => helpBtn.style.background = 'rgba(255, 255, 255, 0.1)';
+    helpBtn.onclick = () => showHelpPanel();
+
     const undoBtn = document.createElement('button');
     undoBtn.id = 'yt-undo-btn';
     undoBtn.innerHTML = `
@@ -483,8 +553,11 @@
 
     const headerRight = document.createElement('div');
     headerRight.style.display = 'flex';
-    headerRight.style.gap = '8px';
+    headerRight.style.gap = '12px';
     headerRight.appendChild(addBtn);
+    headerRight.appendChild(exportBtn);
+    headerRight.appendChild(importBtn);
+    headerRight.appendChild(helpBtn);
     headerRight.appendChild(undoBtn);
     headerRight.appendChild(closeBtn);
 
@@ -796,6 +869,144 @@
       undoBtn.style.cursor = 'not-allowed';
       undoBtn.title = 'No deletions to undo';
     }
+  }
+
+  // Export bookmarks
+  function exportBookmarks() {
+    if (bookmarks.length === 0) {
+      alert('No bookmarks to export!');
+      return;
+    }
+
+    const videoId = new URLSearchParams(window.location.search).get("v");
+    const videoTitle = document.title.replace(' - YouTube', '');
+    
+    const exportData = {
+      videoId: videoId,
+      videoTitle: videoTitle,
+      url: window.location.href,
+      exportDate: new Date().toISOString(),
+      bookmarks: bookmarks
+    };
+
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `bookmarks_${videoId}_${Date.now()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  // Import bookmarks
+  function importBookmarks() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'application/json';
+    
+    input.onchange = (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const importData = JSON.parse(event.target.result);
+          
+          if (!importData.bookmarks || !Array.isArray(importData.bookmarks)) {
+            alert('Invalid bookmark file format!');
+            return;
+          }
+
+          // Merge with existing bookmarks
+          const merged = [...bookmarks, ...importData.bookmarks];
+          const unique = merged.filter((bm, index, self) => 
+            index === self.findIndex(b => b.time === bm.time)
+          );
+          unique.sort((a, b) => a.time - b.time);
+
+          bookmarks = unique;
+          chrome.storage.local.set({ [storageKey]: bookmarks }, () => {
+            refreshMarkers();
+            refreshBookmarkList();
+            alert(`Imported ${importData.bookmarks.length} bookmarks!`);
+          });
+        } catch (error) {
+          alert('Error reading bookmark file!');
+          console.error(error);
+        }
+      };
+      reader.readAsText(file);
+    };
+    
+    input.click();
+  }
+
+  // Show help panel
+  function showHelpPanel() {
+    const existingHelp = document.getElementById('yt-help-overlay');
+    if (existingHelp) {
+      existingHelp.remove();
+      return;
+    }
+
+    const videoContainer = document.querySelector('.html5-video-player');
+    if (!videoContainer) return;
+
+    const overlay = document.createElement('div');
+    overlay.id = 'yt-help-overlay';
+    Object.assign(overlay.style, {
+      position: 'absolute',
+      top: '0',
+      left: '0',
+      width: '100%',
+      height: '100%',
+      background: 'rgba(0, 0, 0, 0.8)',
+      backdropFilter: 'blur(5px)',
+      zIndex: '10001',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center'
+    });
+
+    const helpBox = document.createElement('div');
+    Object.assign(helpBox.style, {
+      background: 'rgba(18, 18, 18, 0.95)',
+      border: '1px solid rgba(255, 255, 255, 0.1)',
+      borderRadius: '12px',
+      padding: '24px',
+      maxWidth: '500px',
+      color: 'white'
+    });
+
+    helpBox.innerHTML = `
+      <h3 style="margin: 0 0 16px 0; font-size: 18px; font-weight: 600;">Keyboard Shortcuts</h3>
+      <div style="display: grid; gap: 8px; font-size: 14px; line-height: 1.6;">
+        <div><kbd style="background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 3px;">P</kbd> - Add bookmark at current time</div>
+        <div><kbd style="background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 3px;">L</kbd> - Label bookmark at current time</div>
+        <div><kbd style="background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 3px;">Shift + PageUp/Down</kbd> - Navigate bookmarks</div>
+        <div><kbd style="background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 3px;">Shift + R</kbd> - Remove bookmark at current time</div>
+        <div><kbd style="background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 3px;">Shift + C</kbd> - Clear all bookmarks</div>
+        <div><kbd style="background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 3px;">Alt + 1-9</kbd> - Set playback speed (1x-9x)</div>
+        <div><kbd style="background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 3px;">+/-</kbd> - Increase/decrease speed by 0.25x</div>
+        <div><kbd style="background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 3px;">Alt + R</kbd> - Toggle remaining time overlay</div>
+      </div>
+      <div style="margin-top: 20px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.1); font-size: 13px; color: rgba(255,255,255,0.7); text-align: center;">
+        Having problems? <a href="mailto:nibirbbkr@gmail.com" style="color: #3ea6ff; text-decoration: none;">Contact us</a>
+      </div>
+      <button id="close-help" style="margin-top: 16px; width: 100%; padding: 10px; background: rgba(255,255,255,0.1); border: none; border-radius: 6px; color: white; cursor: pointer; font-size: 14px;">Close</button>
+    `;
+
+    overlay.appendChild(helpBox);
+    videoContainer.appendChild(overlay);
+
+    overlay.onclick = (e) => {
+      if (e.target === overlay) overlay.remove();
+    };
+
+    helpBox.querySelector('#close-help').onclick = () => overlay.remove();
   }
 
   
