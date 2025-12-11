@@ -579,13 +579,22 @@
         padding: '12px',
         marginBottom: '8px',
         display: 'flex',
+        flexDirection: 'column',
+        gap: '8px',
+        transition: 'background 0.2s'
+      });
+      item.dataset.expanded = 'false';
+
+      // Top row container
+      const topRow = document.createElement('div');
+      Object.assign(topRow.style, {
+        display: 'flex',
         alignItems: 'center',
         gap: '8px',
-        transition: 'background 0.2s',
         cursor: 'pointer'
       });
-      item.onmouseover = () => item.style.background = 'rgba(255, 255, 255, 0.1)';
-      item.onmouseout = () => item.style.background = 'rgba(255, 255, 255, 0.05)';
+      topRow.onmouseover = () => item.style.background = 'rgba(255, 255, 255, 0.1)';
+      topRow.onmouseout = () => item.style.background = 'rgba(255, 255, 255, 0.05)';
 
       // Time badge
       const timeBadge = document.createElement('div');
@@ -601,8 +610,8 @@
       });
       timeBadge.textContent = formatTime(bm.time);
 
-      // Label input
-      const labelInput = document.createElement('input');
+      // Label input (expandable)
+      const labelInput = document.createElement('textarea');
       Object.assign(labelInput.style, {
         flex: '1',
         background: 'transparent',
@@ -611,14 +620,78 @@
         fontSize: '14px',
         outline: 'none',
         padding: '4px',
-        minWidth: '0'
+        minWidth: '0',
+        resize: 'none',
+        overflow: 'hidden',
+        height: '22px',
+        transition: 'height 0.2s cubic-bezier(0.4, 0, 0.2, 1), background 0.2s ease, padding 0.2s ease',
+        fontFamily: 'inherit',
+        lineHeight: '1.4',
+        willChange: 'height'
       });
-      labelInput.placeholder = 'Add title...';
+      labelInput.placeholder = 'Notes...';
       labelInput.value = bm.label || '';
-      labelInput.onclick = (e) => e.stopPropagation();
-      labelInput.onchange = () => {
+      labelInput.rows = 1;
+
+      // Expand on click/focus
+      const expandLabel = () => {
+        // Collapse all other expanded items
+        document.querySelectorAll('.yt-bookmark-item-expanded').forEach(other => {
+          const otherInput = other.querySelector('textarea');
+          if (otherInput && otherInput !== labelInput) {
+            otherInput.style.height = '22px';
+            otherInput.style.background = 'transparent';
+            otherInput.style.padding = '4px';
+            other.classList.remove('yt-bookmark-item-expanded');
+          }
+        });
+
+        item.classList.add('yt-bookmark-item-expanded');
+        labelInput.style.height = '60px';
+        labelInput.style.background = 'rgba(0, 0, 0, 0.3)';
+        labelInput.style.borderRadius = '6px';
+        labelInput.style.padding = '6px';
+      };
+
+      const collapseLabel = () => {
+        labelInput.style.height = '22px';
+        labelInput.style.background = 'transparent';
+        labelInput.style.padding = '4px';
+        item.classList.remove('yt-bookmark-item-expanded');
         bm.label = labelInput.value;
         chrome.storage.local.set({ [storageKey]: bookmarks }, refreshMarkers);
+      };
+
+      labelInput.onclick = (e) => {
+        e.stopPropagation();
+        expandLabel();
+      };
+
+      labelInput.onfocus = () => {
+        expandLabel();
+      };
+
+      labelInput.onblur = () => {
+        collapseLabel();
+      };
+
+      labelInput.oninput = () => {
+        bm.label = labelInput.value;
+      };
+
+      labelInput.onkeydown = (e) => {
+        e.stopPropagation();
+      };
+
+      // Click handler - expand on row click
+      topRow.onclick = (e) => {
+        if (e.target === jumpBtn || e.target.closest('button') === jumpBtn ||
+            e.target === deleteBtn || e.target.closest('button') === deleteBtn ||
+            e.target === labelInput) {
+          return;
+        }
+        
+        labelInput.focus();
       };
 
       // Jump button
@@ -682,16 +755,12 @@
         });
       };
 
-      item.appendChild(timeBadge);
-      item.appendChild(labelInput);
-      item.appendChild(jumpBtn);
-      item.appendChild(deleteBtn);
+      topRow.appendChild(timeBadge);
+      topRow.appendChild(labelInput);
+      topRow.appendChild(jumpBtn);
+      topRow.appendChild(deleteBtn);
 
-      // Click item to jump to time
-      item.onclick = () => {
-        const video = document.querySelector('video');
-        if (video) video.currentTime = bm.time;
-      };
+      item.appendChild(topRow);
 
       listContainer.appendChild(item);
     });
