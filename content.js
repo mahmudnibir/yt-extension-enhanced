@@ -362,6 +362,35 @@
       overflow: 'hidden'
     });
 
+    // Add custom scrollbar styles
+    const style = document.createElement('style');
+    style.textContent = `
+      #yt-bookmark-list::-webkit-scrollbar {
+        width: 4px;
+      }
+      #yt-bookmark-list::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      #yt-bookmark-list::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.3);
+        border-radius: 2px;
+        min-height: 30px;
+      }
+      #yt-bookmark-list::-webkit-scrollbar-thumb:hover {
+        background: rgba(255, 255, 255, 0.5);
+      }
+      #yt-bookmark-list::-webkit-scrollbar-button {
+        display: none;
+        height: 0;
+        width: 0;
+      }
+      #yt-bookmark-list {
+        scrollbar-width: thin;
+        scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+      }
+    `;
+    document.head.appendChild(style);
+
     // Header
     const header = document.createElement('div');
     Object.assign(header.style, {
@@ -467,8 +496,8 @@
     Object.assign(listContainer.style, {
       padding: '12px',
       overflowY: 'auto',
-      maxHeight: '280px',
-      flex: '1'
+      height: '240px',
+      minHeight: '240px'
     });
     listContainer.id = 'yt-bookmark-list';
     
@@ -480,6 +509,14 @@
     panel.appendChild(header);
     panel.appendChild(listContainer);
     videoContainer.appendChild(panel);
+
+    // Prevent YouTube keyboard shortcuts when panel is open
+    const blockYTKeys = (e) => {
+      e.stopPropagation();
+    };
+    panel.addEventListener('keydown', blockYTKeys, true);
+    panel.addEventListener('keyup', blockYTKeys, true);
+    panel.addEventListener('keypress', blockYTKeys, true);
 
     // Load and display bookmarks
     refreshBookmarkList();
