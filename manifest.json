@@ -3,7 +3,8 @@
   "name": "YouTube Enhanced - Speed Control & Bookmarks",
   "version": "2.0.1",
   "description": "Advanced YouTube player with custom speed control, video bookmarks, ad skipping, content filters, watch statistics, and full keyboard customization for power users.",
-  "author": "Your Name",
+  "author": "Mahmud Nibir",
+  "homepage_url": "https://github.com/mahmudnibir/yt-extension-enhanced",
   "permissions": ["storage", "activeTab", "scripting"],
   "host_permissions": ["*://www.youtube.com/*"],
   "content_scripts": [
