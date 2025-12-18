@@ -44,11 +44,16 @@
     
     // Apply content control settings
     applyContentControls();
+    
+    // Reapply content controls periodically for dynamic content
+    setInterval(applyContentControls, 2000);
   };
   
   // Function to hide/show content based on settings
   function applyContentControls() {
     chrome.storage.sync.get(['hideComments', 'hideShorts', 'hideDescription'], (data) => {
+      console.log('Applying content controls:', data);
+      
       // Hide comments
       if (data.hideComments) {
         hideComments();
@@ -78,19 +83,23 @@
     style.textContent = `
       ytd-comments#comments,
       ytd-comments-header-renderer,
-      ytd-comment-thread-renderer {
+      ytd-comment-thread-renderer,
+      #comments.ytd-watch-flexy,
+      ytd-item-section-renderer#sections > #contents > ytd-comments {
         display: none !important;
       }
     `;
     if (!document.getElementById('yt-hide-comments-style')) {
       document.head.appendChild(style);
     }
+    console.log('Comments hidden');
   }
   
   function showComments() {
     const style = document.getElementById('yt-hide-comments-style');
     if (style) {
       style.remove();
+      console.log('Comments shown');
     }
   }
   
@@ -100,22 +109,27 @@
     style.textContent = `
       ytd-reel-shelf-renderer,
       ytd-rich-section-renderer:has(ytd-reel-shelf-renderer),
+      ytd-guide-entry-renderer[title="Shorts"],
       ytd-guide-entry-renderer:has([title="Shorts"]),
       ytd-mini-guide-entry-renderer:has([aria-label="Shorts"]),
       a[href^="/shorts/"],
-      ytd-rich-item-renderer:has(a[href^="/shorts/"]) {
+      ytd-rich-item-renderer:has(a[href^="/shorts/"]),
+      ytd-video-renderer:has(a[href*="/shorts/"]),
+      [is-shorts] {
         display: none !important;
       }
     `;
     if (!document.getElementById('yt-hide-shorts-style')) {
       document.head.appendChild(style);
     }
+    console.log('Shorts hidden');
   }
   
   function showShorts() {
     const style = document.getElementById('yt-hide-shorts-style');
     if (style) {
       style.remove();
+      console.log('Shorts shown');
     }
   }
   
@@ -123,30 +137,38 @@
     const style = document.getElementById('yt-hide-description-style') || document.createElement('style');
     style.id = 'yt-hide-description-style';
     style.textContent = `
+      ytd-watch-metadata #description,
       ytd-video-description-transcript-section-renderer,
       ytd-expandable-video-description-body-renderer,
       ytd-video-description-header-renderer,
-      #description.ytd-video-secondary-info-renderer {
+      #description.ytd-video-secondary-info-renderer,
+      #description.style-scope.ytd-watch-metadata,
+      tp-yt-paper-tooltip.ytd-video-description-header-renderer {
         display: none !important;
       }
     `;
     if (!document.getElementById('yt-hide-description-style')) {
       document.head.appendChild(style);
     }
+    console.log('Description hidden');
   }
   
   function showDescription() {
     const style = document.getElementById('yt-hide-description-style');
     if (style) {
       style.remove();
+      console.log('Description shown');
     }
   }
   
   // Listen for messages from popup
   chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === 'updateSettings') {
+      console.log('Received updateSettings message');
       applyContentControls();
+      sendResponse({success: true});
     }
+    return true;
   });
 
   const handleKeyPress = (e) => {

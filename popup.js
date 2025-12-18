@@ -85,10 +85,18 @@ document.addEventListener('DOMContentLoaded', () => {
       
       // Notify content script to apply changes
       chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
-        if (tabs[0]) {
+        if (tabs[0] && tabs[0].url && tabs[0].url.includes('youtube.com')) {
           chrome.tabs.sendMessage(tabs[0].id, {
             action: 'updateSettings',
             settings: { hideComments, hideShorts, hideDescription }
+          }, (response) => {
+            if (chrome.runtime.lastError) {
+              console.log('Message sending error:', chrome.runtime.lastError.message);
+              // Reload the tab to apply settings
+              chrome.tabs.reload(tabs[0].id);
+            } else {
+              console.log('Settings applied successfully');
+            }
           });
         }
       });
