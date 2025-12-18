@@ -41,7 +41,113 @@
     chrome.storage.local.get(['totalTimeSaved'], (res) => {
       totalTimeSaved = res.totalTimeSaved || 0;
     });
+    
+    // Apply content control settings
+    applyContentControls();
   };
+  
+  // Function to hide/show content based on settings
+  function applyContentControls() {
+    chrome.storage.sync.get(['hideComments', 'hideShorts', 'hideDescription'], (data) => {
+      // Hide comments
+      if (data.hideComments) {
+        hideComments();
+      } else {
+        showComments();
+      }
+      
+      // Hide shorts
+      if (data.hideShorts) {
+        hideShorts();
+      } else {
+        showShorts();
+      }
+      
+      // Hide description
+      if (data.hideDescription) {
+        hideDescription();
+      } else {
+        showDescription();
+      }
+    });
+  }
+  
+  function hideComments() {
+    const style = document.getElementById('yt-hide-comments-style') || document.createElement('style');
+    style.id = 'yt-hide-comments-style';
+    style.textContent = `
+      ytd-comments#comments,
+      ytd-comments-header-renderer,
+      ytd-comment-thread-renderer {
+        display: none !important;
+      }
+    `;
+    if (!document.getElementById('yt-hide-comments-style')) {
+      document.head.appendChild(style);
+    }
+  }
+  
+  function showComments() {
+    const style = document.getElementById('yt-hide-comments-style');
+    if (style) {
+      style.remove();
+    }
+  }
+  
+  function hideShorts() {
+    const style = document.getElementById('yt-hide-shorts-style') || document.createElement('style');
+    style.id = 'yt-hide-shorts-style';
+    style.textContent = `
+      ytd-reel-shelf-renderer,
+      ytd-rich-section-renderer:has(ytd-reel-shelf-renderer),
+      ytd-guide-entry-renderer:has([title="Shorts"]),
+      ytd-mini-guide-entry-renderer:has([aria-label="Shorts"]),
+      a[href^="/shorts/"],
+      ytd-rich-item-renderer:has(a[href^="/shorts/"]) {
+        display: none !important;
+      }
+    `;
+    if (!document.getElementById('yt-hide-shorts-style')) {
+      document.head.appendChild(style);
+    }
+  }
+  
+  function showShorts() {
+    const style = document.getElementById('yt-hide-shorts-style');
+    if (style) {
+      style.remove();
+    }
+  }
+  
+  function hideDescription() {
+    const style = document.getElementById('yt-hide-description-style') || document.createElement('style');
+    style.id = 'yt-hide-description-style';
+    style.textContent = `
+      ytd-video-description-transcript-section-renderer,
+      ytd-expandable-video-description-body-renderer,
+      ytd-video-description-header-renderer,
+      #description.ytd-video-secondary-info-renderer {
+        display: none !important;
+      }
+    `;
+    if (!document.getElementById('yt-hide-description-style')) {
+      document.head.appendChild(style);
+    }
+  }
+  
+  function showDescription() {
+    const style = document.getElementById('yt-hide-description-style');
+    if (style) {
+      style.remove();
+    }
+  }
+  
+  // Listen for messages from popup
+  chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    if (request.action === 'updateSettings') {
+      applyContentControls();
+    }
+  });
 
   const handleKeyPress = (e) => {
     if (!video || !storageKey) return;
@@ -794,6 +900,10 @@
 
       labelInput.onkeydown = (e) => {
         e.stopPropagation();
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          labelInput.blur(); // This will trigger collapseLabel which saves the note
+        }
       };
 
       // Click handler - expand on row click

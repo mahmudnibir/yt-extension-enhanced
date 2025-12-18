@@ -2,11 +2,20 @@ document.addEventListener('DOMContentLoaded', () => {
   const speedInput = document.getElementById('speed');
   const speedDisplay = document.getElementById('speedDisplay');
   const skipAdsCheckbox = document.getElementById('skipAds');
+  const hideCommentsCheckbox = document.getElementById('hideComments');
+  const hideShortsCheckbox = document.getElementById('hideShorts');
+  const hideDescriptionCheckbox = document.getElementById('hideDescription');
   const saveBtn = document.getElementById('save');
   const resetBtn = document.getElementById('reset');
 
   // Default values
-  const defaults = { speed: '1.0', skipAds: false };
+  const defaults = { 
+    speed: '1.0', 
+    skipAds: false,
+    hideComments: false,
+    hideShorts: false,
+    hideDescription: false
+  };
 
   // Update speed display with enhanced formatting
   const updateSpeedDisplay = (value) => {
@@ -19,7 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
     } else if (speed <= 0.5) {
       speedDisplay.style.background = 'linear-gradient(135deg, #4ECDC4, #44A08D)';
     } else {
-      speedDisplay.style.background = 'var(--gradient-primary)';
+      speedDisplay.style.background = 'transparent';
     }
   };
 
@@ -27,6 +36,9 @@ document.addEventListener('DOMContentLoaded', () => {
   chrome.storage.sync.get(defaults, (data) => {
     speedInput.value = data.speed;
     skipAdsCheckbox.checked = data.skipAds;
+    hideCommentsCheckbox.checked = data.hideComments || false;
+    hideShortsCheckbox.checked = data.hideShorts || false;
+    hideDescriptionCheckbox.checked = data.hideDescription || false;
     updateSpeedDisplay(data.speed);
     
     // Animate elements in
@@ -51,24 +63,40 @@ document.addEventListener('DOMContentLoaded', () => {
     if (isNaN(speed) || speed < 0.1) speed = parseFloat(defaults.speed);
 
     const skipAds = !!skipAdsCheckbox.checked;
+    const hideComments = !!hideCommentsCheckbox.checked;
+    const hideShorts = !!hideShortsCheckbox.checked;
+    const hideDescription = !!hideDescriptionCheckbox.checked;
 
     // Add loading state
     saveBtn.style.transform = 'scale(0.95)';
-    saveBtn.innerHTML = '<span>⏳</span>Saving...';
+    saveBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg> Saving...';
     
     chrome.storage.sync.set({
       speed: speed.toString(),
-      skipAds
+      skipAds,
+      hideComments,
+      hideShorts,
+      hideDescription
     }, () => {
       // Success animation
-      saveBtn.innerHTML = '<span>✅</span>Configuration Saved!';
+      saveBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Saved!';
       saveBtn.style.background = 'linear-gradient(135deg, #00D562, #00A651)';
       saveBtn.style.transform = 'scale(1)';
       
+      // Notify content script to apply changes
+      chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
+        if (tabs[0]) {
+          chrome.tabs.sendMessage(tabs[0].id, {
+            action: 'updateSettings',
+            settings: { hideComments, hideShorts, hideDescription }
+          });
+        }
+      });
+      
       // Reset after delay
       setTimeout(() => {
-        saveBtn.innerHTML = '<span>💾</span>Save Configuration';
-        saveBtn.style.background = 'var(--gradient-primary)';
+        saveBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> Save';
+        saveBtn.style.background = 'linear-gradient(135deg, #4f82ff 0%, #3461e6 100%)';
       }, 2000);
     });
   });
