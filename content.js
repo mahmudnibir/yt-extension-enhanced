@@ -294,7 +294,7 @@
       video.playbackRate = speed;
       console.log(`Manual: Playback speed set to ${speed}x`);
       showSpeedOverlay(speed);
-      chrome.storage.sync.set({ speed: speed.toString() });
+      saveSpeed(speed);
 
       manualOverride = true;
       clearTimeout(overrideTimeout);
@@ -311,7 +311,7 @@
       newSpeed = parseFloat(newSpeed.toFixed(2));
       video.playbackRate = newSpeed;
       showSpeedOverlay(newSpeed);
-      chrome.storage.sync.set({ speed: newSpeed.toString() });
+      saveSpeed(newSpeed);
       console.log(`Speed increased to ${newSpeed}x`);
       return;
     }
@@ -323,7 +323,7 @@
       newSpeed = parseFloat(newSpeed.toFixed(2));
       video.playbackRate = newSpeed;
       showSpeedOverlay(newSpeed);
-      chrome.storage.sync.set({ speed: newSpeed.toString() });
+      saveSpeed(newSpeed);
       console.log(`Speed decreased to ${newSpeed}x`);
       return;
     }
@@ -343,13 +343,42 @@
   function applySettings() {
     if (manualOverride) return; // Prevent auto-speed adjustment during manual override
 
-    chrome.storage.sync.get(["speed"], ({ speed }) => {
+    chrome.storage.sync.get(["speed", "rememberSpeed"], ({ speed, rememberSpeed }) => {
       const video = document.querySelector('video');
-      if (video && speed) {
+      if (!video || !speed) return;
+
+      // If remember speed per video is enabled, check for video-specific speed
+      if (rememberSpeed && storageKey) {
+        const videoSpeedKey = `${storageKey}_speed`;
+        chrome.storage.local.get([videoSpeedKey], (res) => {
+          if (res[videoSpeedKey]) {
+            video.playbackRate = parseFloat(res[videoSpeedKey]);
+            console.log("Auto: Video-specific speed set to", res[videoSpeedKey]);
+          } else {
+            video.playbackRate = parseFloat(speed);
+            console.log("Auto: Default speed set to", speed);
+          }
+        });
+      } else {
         video.playbackRate = parseFloat(speed);
         console.log("Auto: Playback speed set to", speed);
       }
     }); 
+  }
+
+  // Save speed (either globally or per video)
+  function saveSpeed(speed) {
+    chrome.storage.sync.get(["rememberSpeed"], ({ rememberSpeed }) => {
+      // Always save global speed
+      chrome.storage.sync.set({ speed: speed.toString() });
+      
+      // If remember speed per video is enabled, also save video-specific speed
+      if (rememberSpeed && storageKey) {
+        const videoSpeedKey = `${storageKey}_speed`;
+        chrome.storage.local.set({ [videoSpeedKey]: speed.toString() });
+        console.log(`Video-specific speed saved: ${speed}x`);
+      }
+    });
   }
 
   // Add bookmark marker to the progress bar

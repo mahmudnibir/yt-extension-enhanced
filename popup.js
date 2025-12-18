@@ -5,6 +5,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const hideCommentsCheckbox = document.getElementById('hideComments');
   const hideShortsCheckbox = document.getElementById('hideShorts');
   const hideDescriptionCheckbox = document.getElementById('hideDescription');
+  const rememberSpeedCheckbox = document.getElementById('rememberSpeed');
 
   // Default values
   const defaults = { 
@@ -12,7 +13,8 @@ document.addEventListener('DOMContentLoaded', () => {
     skipAds: false,
     hideComments: false,
     hideShorts: false,
-    hideDescription: false
+    hideDescription: false,
+    rememberSpeed: false
   };
 
   // Update speed display with enhanced formatting
@@ -37,6 +39,7 @@ document.addEventListener('DOMContentLoaded', () => {
     hideCommentsCheckbox.checked = data.hideComments || false;
     hideShortsCheckbox.checked = data.hideShorts || false;
     hideDescriptionCheckbox.checked = data.hideDescription || false;
+    rememberSpeedCheckbox.checked = data.rememberSpeed || false;
     updateSpeedDisplay(data.speed);
     
     // Animate elements in
@@ -54,13 +57,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const hideComments = !!hideCommentsCheckbox.checked;
     const hideShorts = !!hideShortsCheckbox.checked;
     const hideDescription = !!hideDescriptionCheckbox.checked;
+    const rememberSpeed = !!rememberSpeedCheckbox.checked;
     
     chrome.storage.sync.set({
       speed: speed.toString(),
       skipAds,
       hideComments,
       hideShorts,
-      hideDescription
+      hideDescription,
+      rememberSpeed
     }, () => {
       // Notify content script to apply changes
       chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
@@ -92,6 +97,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Auto-save on checkbox changes
   skipAdsCheckbox.addEventListener('change', autoSave);
+  rememberSpeedCheckbox.addEventListener('change', autoSave);
   hideCommentsCheckbox.addEventListener('change', autoSave);
   hideShortsCheckbox.addEventListener('change', autoSave);
   hideDescriptionCheckbox.addEventListener('change', autoSave);
