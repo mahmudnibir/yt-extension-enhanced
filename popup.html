@@ -7,28 +7,148 @@
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     
+    :root {
+      --bg-primary: #0f0f0f;
+      --bg-secondary: #181818;
+      --bg-tertiary: #212121;
+      --bg-card: #272727;
+      --bg-card-hover: #3a3a3a;
+      --accent-color: #ff0000;
+      --accent-hover: #cc0000;
+      --border-color: rgba(255, 255, 255, 0.1);
+      --border-color-hover: rgba(255, 255, 255, 0.15);
+      --text-primary: #ffffff;
+      --text-secondary: rgba(255, 255, 255, 0.6);
+      --icon-bg: rgba(255, 0, 0, 0.15);
+    }
+    
+    [data-theme="blue"] {
+      --bg-primary: #0f1420;
+      --bg-secondary: #1a1f2e;
+      --bg-tertiary: #1e2433;
+      --bg-card: #252d3d;
+      --bg-card-hover: #2d3548;
+      --accent-color: #4f82ff;
+      --accent-hover: #3d6fd9;
+      --border-color: rgba(79, 130, 255, 0.15);
+      --border-color-hover: rgba(79, 130, 255, 0.25);
+      --text-primary: #ffffff;
+      --text-secondary: rgba(255, 255, 255, 0.6);
+      --icon-bg: rgba(79, 130, 255, 0.15);
+    }
+    
     body {
       width: 380px;
       height: 580px;
       overflow: hidden;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-      background: linear-gradient(135deg, #1a1f3a 0%, #0f1420 100%);
-      color: #ffffff;
+      background: var(--bg-primary);
+      color: var(--text-primary);
       position: relative;
+      transition: background 0.3s ease;
     }
     
     /* Layout */
     .container { display: flex; flex-direction: column; height: 100%; }
+    
+    /* Tabs */
+    .tabs {
+      display: flex;
+      background: var(--bg-secondary);
+      padding: 12px 16px;
+      gap: 6px;
+      border-bottom: 1px solid var(--border-color);
+    }
+    
+    .tab {
+      padding: 8px 18px;
+      background: transparent;
+      border: none;
+      color: var(--text-secondary);
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      border-radius: 20px;
+      position: relative;
+      overflow: hidden;
+      letter-spacing: 0.3px;
+    }
+    
+    .tab::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: var(--bg-card);
+      opacity: 0;
+      transition: opacity 0.3s;
+      z-index: -1;
+    }
+    
+    .tab:hover {
+      color: var(--text-primary);
+      transform: translateY(-1px);
+    }
+    
+    .tab:hover::before {
+      opacity: 1;
+    }
+    
+    .tab.active {
+      color: white;
+      background: var(--accent-color);
+      transform: translateY(0);
+    }
+    
+    .tab.active::before {
+      opacity: 0;
+    }
+    
+    .tab-content {
+      display: none;
+    }
+    
+    .tab-content.active {
+      display: block;
+    }
     
     /* Header */
     header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 20px;
-      background: rgba(26, 31, 58, 0.8);
+      padding: 12px 16px;
+      background: var(--bg-tertiary);
       backdrop-filter: blur(10px);
-      border-bottom: 1px solid rgba(79, 130, 255, 0.15);
+      border-bottom: 1px solid var(--border-color);
+    }
+    
+    .theme-toggle {
+      width: 36px;
+      height: 36px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+      color: var(--text-secondary);
+    }
+    
+    .theme-toggle:hover {
+      background: var(--bg-card-hover);
+      border-color: var(--border-color-hover);
+      color: var(--text-primary);
+    }
+    
+    .theme-toggle svg {
+      width: 18px;
+      height: 18px;
     }
     
     .header-left {
@@ -39,39 +159,17 @@
     }
     
     .logo { 
-      width: 36px; 
-      height: 36px;
-      background: linear-gradient(135deg, #4f82ff 0%, #3461e6 100%);
-      border-radius: 10px;
+      width: 28px; 
+      height: 28px;
+      border-radius: 8px;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 6px;
+      padding: 0;
     }
-    .logo svg { width: 100%; height: 100%; filter: invert(1); }
+    .logo img { width: 100%; height: 100%; object-fit: contain; }
     
-    h1 { font-size: 18px; font-weight: 600; line-height: 1.2; letter-spacing: -0.3px; }
-    
-    #save {
-      background: linear-gradient(135deg, #4f82ff 0%, #3461e6 100%);
-      color: white;
-      font-weight: 500;
-      padding: 8px 16px;
-      border-radius: 8px;
-      font-size: 13px;
-      border: 1px solid rgba(79, 130, 255, 0.3);
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      transition: all 0.2s;
-    }
-    
-    #save:hover { 
-      background: linear-gradient(135deg, #5a8fff 0%, #4570ff 100%);
-      transform: translateY(-1px);
-      box-shadow: 0 4px 12px rgba(79, 130, 255, 0.3);
-    }
+    h1 { font-size: 15px; font-weight: 600; line-height: 1.2; letter-spacing: -0.3px; }
     
     /* Main */
     main {
@@ -100,33 +198,32 @@
     section:last-child { margin-bottom: 8px; }
     
     h2 {
-      color: rgba(255, 255, 255, 0.9);
-      font-size: 13px;
+      color: var(--text-primary);
+      font-size: 11px;
       font-weight: 600;
-      padding: 0 4px 8px;
-      margin-bottom: 10px;
+      padding: 0 4px 6px;
+      margin-bottom: 8px;
       text-transform: uppercase;
-      letter-spacing: 0.5px;
-      border-bottom: 1px solid rgba(79, 130, 255, 0.15);
+      letter-spacing: 0.8px;
+      border-bottom: 1px solid var(--border-color);
     }
     
     .setting-item {
       display: flex;
       align-items: center;
-      gap: 12px;
-      padding: 14px;
-      background: rgba(30, 38, 65, 0.4);
+      gap: 10px;
+      padding: 12px;
+      background: var(--bg-card);
       backdrop-filter: blur(10px);
-      border: 1px solid rgba(79, 130, 255, 0.15);
+      border: 1px solid var(--border-color);
       border-radius: 10px;
-      margin-bottom: 8px;
+      margin-bottom: 6px;
       transition: all 0.2s;
     }
     
     .setting-item:hover {
-      background: rgba(30, 38, 65, 0.6);
-      border-color: rgba(79, 130, 255, 0.3);
-      box-shadow: 0 2px 8px rgba(79, 130, 255, 0.15);
+      background: var(--bg-card-hover);
+      border-color: var(--border-color-hover);
     }
     
     .setting-item-full {
@@ -137,32 +234,39 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      background: rgba(79, 130, 255, 0.15);
+      background: var(--icon-bg);
       border-radius: 8px;
-      width: 36px;
-      height: 36px;
+      width: 32px;
+      height: 32px;
       flex-shrink: 0;
-      font-size: 18px;
+      font-size: 16px;
     }
     
     .setting-content { flex: 1; }
     
     .setting-title {
       color: rgba(255, 255, 255, 0.95);
-      font-size: 14px;
+      font-size: 12px;
       font-weight: 500;
-      margin-bottom: 3px;
+      margin-bottom: 2px;
     }
     
     .setting-desc {
       color: rgba(255, 255, 255, 0.5);
-      font-size: 11px;
+      font-size: 10px;
     }
     
     .disabled { opacity: 0.4; pointer-events: none; }
     
     /* Speed Control */
     .speed-control {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      width: 100%;
+    }
+    
+    .speed-slider-container {
       display: flex;
       align-items: center;
       gap: 12px;
@@ -171,42 +275,74 @@
     
     #speed {
       flex: 1;
-      height: 6px;
-      background: rgba(79, 130, 255, 0.2);
-      border-radius: 6px;
+      height: 8px;
+      background: var(--border-color);
+      border-radius: 10px;
       outline: none;
       cursor: pointer;
       -webkit-appearance: none;
       appearance: none;
+      position: relative;
     }
     
     #speed::-webkit-slider-thumb {
       -webkit-appearance: none;
       appearance: none;
-      width: 16px;
-      height: 16px;
+      width: 20px;
+      height: 20px;
       border-radius: 50%;
-      background: linear-gradient(135deg, #4f82ff 0%, #3461e6 100%);
-      cursor: pointer;
-      box-shadow: 0 2px 8px rgba(79, 130, 255, 0.5);
+      background: var(--accent-color);
+      cursor: grab;
+      transition: transform 0.2s;
+    }
+    
+    #speed::-webkit-slider-thumb:hover {
+      transform: scale(1.1);
+    }
+    
+    #speed::-webkit-slider-thumb:active {
+      cursor: grabbing;
+      transform: scale(1.05);
     }
     
     #speed::-moz-range-thumb {
-      width: 16px;
-      height: 16px;
+      width: 20px;
+      height: 20px;
       border-radius: 50%;
-      background: linear-gradient(135deg, #4f82ff 0%, #3461e6 100%);
-      cursor: pointer;
+      background: var(--accent-color);
+      cursor: grab;
       border: none;
-      box-shadow: 0 2px 8px rgba(79, 130, 255, 0.5);
+      transition: transform 0.2s;
+    }
+    
+    #speed::-moz-range-thumb:hover {
+      transform: scale(1.1);
+    }
+    
+    #speed::-moz-range-thumb:active {
+      cursor: grabbing;
+      transform: scale(1.05);
     }
     
     #speedDisplay {
-      color: rgba(255, 255, 255, 0.95);
-      font-size: 13px;
-      font-weight: 600;
-      min-width: 42px;
-      text-align: right;
+      background: var(--accent-color);
+      color: white;
+      font-size: 12px;
+      font-weight: 700;
+      min-width: 48px;
+      padding: 5px 10px;
+      border-radius: 8px;
+      text-align: center;
+      letter-spacing: 0.5px;
+      transition: transform 0.2s;
+    }
+    
+    .speed-labels {
+      display: flex;
+      justify-content: space-between;
+      font-size: 10px;
+      color: rgba(255, 255, 255, 0.4);
+      padding: 0 4px;
     }
     
     /* Toggle Switch */
@@ -218,7 +354,7 @@
       cursor: pointer;
       align-items: center;
       border-radius: 22px;
-      background: rgba(79, 130, 255, 0.2);
+      background: var(--border-color);
       padding: 2px;
       transition: all 0.2s;
     }
@@ -235,8 +371,7 @@
     .toggle-input { position: absolute; opacity: 0; }
     
     .toggle-input:checked + .toggle-label {
-      background: linear-gradient(135deg, #4f82ff 0%, #3461e6 100%);
-      box-shadow: 0 0 8px rgba(79, 130, 255, 0.4);
+      background: var(--accent-color);
     }
     
     .toggle-input:checked + .toggle-label .toggle-thumb {
@@ -250,12 +385,12 @@
     
     /* Keyboard Shortcut Badge */
     .kbd-badge {
-      padding: 6px 12px;
-      background: rgba(79, 130, 255, 0.15);
-      color: rgba(255, 255, 255, 0.9);
-      border: 1px solid rgba(79, 130, 255, 0.3);
+      padding: 5px 10px;
+      background: var(--bg-card);
+      color: var(--text-primary);
+      border: 1px solid var(--border-color);
       border-radius: 6px;
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 600;
       font-family: monospace;
     }
@@ -263,26 +398,25 @@
     /* Buttons */
     .btn-export {
       width: 100%;
-      background: rgba(30, 38, 65, 0.4);
-      color: rgba(255, 255, 255, 0.9);
+      background: var(--bg-card);
+      color: var(--text-primary);
       font-weight: 500;
-      padding: 12px 16px;
+      padding: 10px 14px;
       border-radius: 10px;
-      font-size: 13px;
-      border: 1px solid rgba(79, 130, 255, 0.2);
+      font-size: 11px;
+      border: 1px solid var(--border-color);
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 8px;
+      gap: 6px;
       transition: all 0.2s;
     }
     
     .btn-export:hover { 
-      background: rgba(30, 38, 65, 0.6);
-      border-color: rgba(79, 130, 255, 0.4);
+      background: var(--bg-card-hover);
+      border-color: var(--border-color-hover);
       transform: translateY(-1px);
-      box-shadow: 0 2px 8px rgba(79, 130, 255, 0.2);
     }
     
     .btn-clear {
@@ -314,31 +448,31 @@
     /* Info Text */
     .info-text {
       text-align: center;
-      color: rgba(255, 255, 255, 0.5);
-      font-size: 12px;
-      padding: 14px;
-      background: rgba(30, 38, 65, 0.3);
-      border: 1px solid rgba(79, 130, 255, 0.15);
+      color: var(--text-secondary);
+      font-size: 10px;
+      padding: 10px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
       border-radius: 10px;
-      margin-bottom: 10px;
+      margin-bottom: 8px;
     }
     
     kbd {
-      padding: 3px 8px;
-      background: rgba(79, 130, 255, 0.2);
-      border: 1px solid rgba(79, 130, 255, 0.3);
+      padding: 2px 6px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
       border-radius: 4px;
-      font-size: 11px;
+      font-size: 10px;
       font-weight: 600;
       font-family: monospace;
-      color: rgba(255, 255, 255, 0.9);
+      color: var(--text-primary);
     }
     
     /* Footer */
     footer {
-      border-top: 1px solid rgba(79, 130, 255, 0.15);
-      padding: 12px 20px;
-      background: rgba(26, 31, 58, 0.8);
+      border-top: 1px solid var(--border-color);
+      padding: 10px 16px;
+      background: var(--bg-tertiary);
       backdrop-filter: blur(10px);
     }
     
@@ -346,7 +480,14 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      font-size: 11px;
+      font-size: 10px;
+      gap: 12px;
+    }
+    
+    .footer-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
     
     .version { color: rgba(255, 255, 255, 0.4); }
@@ -354,102 +495,86 @@
     .status {
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 5px;
       color: rgba(255, 255, 255, 0.5);
     }
     
     .status-dot {
-      width: 6px;
-      height: 6px;
+      width: 5px;
+      height: 5px;
       border-radius: 50%;
       background: #10b981;
       box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
     }
     
-    /* Chevron Navigation */
-    .scroll-chevron {
-      position: fixed;
-      right: 16px;
-      width: 32px;
-      height: 32px;
-      background: rgba(79, 130, 255, 0.2);
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(79, 130, 255, 0.3);
-      border-radius: 8px;
+    .footer-actions {
+      display: flex;
+      gap: 8px;
+    }
+    
+    .footer-btn {
+      padding: 5px 10px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      color: var(--text-secondary);
+      font-size: 9px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-decoration: none;
       display: flex;
       align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      z-index: 100;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      gap: 4px;
     }
     
-    .scroll-chevron:hover {
-      background: rgba(79, 130, 255, 0.3);
-      transform: translateY(-2px);
-      box-shadow: 0 6px 16px rgba(79, 130, 255, 0.4);
+    .footer-btn:hover {
+      background: var(--accent-color);
+      border-color: var(--accent-color);
+      color: white;
+      transform: translateY(-1px);
     }
     
-    .scroll-chevron:active {
-      transform: translateY(0);
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    .footer-btn svg {
+      width: 12px;
+      height: 12px;
     }
     
-    .scroll-chevron.hidden {
-      opacity: 0;
-      pointer-events: none;
-    }
-    
-    .scroll-chevron-up {
-      top: 76px;
-    }
-    
-    .scroll-chevron-down {
-      bottom: 56px;
-    }
-    
-    .chevron-icon {
-      width: 18px;
-      height: 18px;
-      stroke: white;
-      stroke-width: 2.5;
-      stroke-linecap: round;
-      stroke-linejoin: round;
-      fill: none;
-    }
   </style>
 </head>
 <body>
-  <button class="scroll-chevron scroll-chevron-up hidden" id="scrollUp" aria-label="Scroll up">
-    <svg class="chevron-icon" viewBox="0 0 24 24">
-      <polyline points="18 15 12 9 6 15"></polyline>
-    </svg>
-  </button>
-  <button class="scroll-chevron scroll-chevron-down" id="scrollDown" aria-label="Scroll down">
-    <svg class="chevron-icon" viewBox="0 0 24 24">
-      <polyline points="6 9 12 15 18 9"></polyline>
-    </svg>
-  </button>
   <div class="container">
     <header>
       <div class="header-left">
         <div class="logo">
-          <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
-          </svg>
+          <img src="youtube.png" alt="YouTube" style="width: 100%; height: 100%; object-fit: contain;">
         </div>
         <h1>YouTube Enhanced</h1>
       </div>
-      <button id="save">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="20 6 9 17 4 12"></polyline>
+      <button class="theme-toggle" id="themeToggle" title="Toggle Theme">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="5"></circle>
+          <line x1="12" y1="1" x2="12" y2="3"></line>
+          <line x1="12" y1="21" x2="12" y2="23"></line>
+          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+          <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+          <line x1="1" y1="12" x2="3" y2="12"></line>
+          <line x1="21" y1="12" x2="23" y2="12"></line>
+          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+          <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
         </svg>
-        Save
       </button>
     </header>
     
+    <div class="tabs">
+      <button class="tab active" data-tab="general">General</button>
+      <button class="tab" data-tab="shortcuts">Shortcuts</button>
+      <button class="tab" data-tab="advanced">Advanced</button>
+    </div>
+    
     <main id="mainContent">
+      <!-- General Tab -->
+      <div class="tab-content active" id="general">
       <!-- Speed Control -->
       <section>
         <h2>Speed Control</h2>
@@ -463,8 +588,17 @@
           <div class="setting-content">
             <div class="setting-title">Playback Speed</div>
             <div class="speed-control">
-              <input id="speed" type="range" min="0.25" max="20" step="0.25" value="1">
-              <span id="speedDisplay">1.0×</span>
+              <div class="speed-slider-container">
+                <input id="speed" type="range" min="0.25" max="20" step="0.25" value="1">
+                <span id="speedDisplay">1.0×</span>
+              </div>
+              <div class="speed-labels">
+                <span>0.25×</span>
+                <span>1×</span>
+                <span>5×</span>
+                <span>10×</span>
+                <span>20×</span>
+              </div>
             </div>
           </div>
         </div>
@@ -584,7 +718,10 @@
           </div>
         </div>
       </section>
+      </div>
       
+      <!-- Shortcuts Tab -->
+      <div class="tab-content" id="shortcuts">
       <!-- Keyboard Shortcuts -->
       <section>
         <h2>Keyboard Shortcuts</h2>
@@ -624,7 +761,10 @@
           <span class="kbd-badge">]</span>
         </div>
       </section>
+      </div>
       
+      <!-- Advanced Tab -->
+      <div class="tab-content" id="advanced">
       <!-- Bookmarks -->
       <section>
         <h2>Bookmarks</h2>
@@ -686,57 +826,37 @@
           </button>
         </div>
       </section>
+      </div>
     </main>
     
     <footer>
       <div class="footer-content">
-        <span class="version">v1.2</span>
-        <div class="status">
-          <div class="status-dot"></div>
-          Active
+        <div class="footer-left">
+          <span class="version">v1.2</span>
+          <div class="status">
+            <div class="status-dot"></div>
+            Active
+          </div>
+        </div>
+        <div class="footer-actions">
+          <a href="mailto:your-email@example.com" class="footer-btn" title="Contact Developer">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+              <polyline points="22,6 12,13 2,6"></polyline>
+            </svg>
+            Contact
+          </a>
+          <a href="https://www.paypal.com/donate" target="_blank" class="footer-btn" title="Support Development">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+            </svg>
+            Donate
+          </a>
         </div>
       </div>
     </footer>
   </div>
   
-  <script>
-    // Chevron scroll controls
-    const mainContent = document.getElementById('mainContent');
-    const scrollUp = document.getElementById('scrollUp');
-    const scrollDown = document.getElementById('scrollDown');
-
-    function updateChevronVisibility() {
-      const isAtTop = mainContent.scrollTop <= 5;
-      const isAtBottom = Math.abs(mainContent.scrollHeight - mainContent.scrollTop - mainContent.clientHeight) <= 5;
-      
-      if (isAtTop) {
-        scrollUp.classList.add('hidden');
-      } else {
-        scrollUp.classList.remove('hidden');
-      }
-      
-      if (isAtBottom) {
-        scrollDown.classList.add('hidden');
-      } else {
-        scrollDown.classList.remove('hidden');
-      }
-    }
-
-    scrollUp.addEventListener('click', () => {
-      mainContent.scrollBy({ top: -180, behavior: 'smooth' });
-      setTimeout(updateChevronVisibility, 300);
-    });
-
-    scrollDown.addEventListener('click', () => {
-      mainContent.scrollBy({ top: 180, behavior: 'smooth' });
-      setTimeout(updateChevronVisibility, 300);
-    });
-
-    mainContent.addEventListener('scroll', updateChevronVisibility);
-    
-    // Initial check
-    setTimeout(updateChevronVisibility, 100);
-  </script>
   <script src="popup.js"></script>
 </body>
 </html>

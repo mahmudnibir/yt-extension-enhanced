@@ -5,8 +5,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const hideCommentsCheckbox = document.getElementById('hideComments');
   const hideShortsCheckbox = document.getElementById('hideShorts');
   const hideDescriptionCheckbox = document.getElementById('hideDescription');
-  const saveBtn = document.getElementById('save');
-  const resetBtn = document.getElementById('reset');
 
   // Default values
   const defaults = { 
@@ -47,18 +45,8 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // Real-time speed display update with haptic feedback
-  speedInput.addEventListener('input', (e) => {
-    updateSpeedDisplay(e.target.value);
-    // Add subtle scale animation to display
-    speedDisplay.style.transform = 'scale(1.05)';
-    setTimeout(() => {
-      speedDisplay.style.transform = 'scale(1)';
-    }, 150);
-  });
-
-  // Save settings with enhanced feedback
-  saveBtn.addEventListener('click', () => {
+  // Auto-save function
+  const autoSave = () => {
     let speed = parseFloat(speedInput.value);
     if (isNaN(speed) || speed < 0.1) speed = parseFloat(defaults.speed);
 
@@ -66,10 +54,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const hideComments = !!hideCommentsCheckbox.checked;
     const hideShorts = !!hideShortsCheckbox.checked;
     const hideDescription = !!hideDescriptionCheckbox.checked;
-
-    // Add loading state
-    saveBtn.style.transform = 'scale(0.95)';
-    saveBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg> Saving...';
     
     chrome.storage.sync.set({
       speed: speed.toString(),
@@ -78,11 +62,6 @@ document.addEventListener('DOMContentLoaded', () => {
       hideShorts,
       hideDescription
     }, () => {
-      // Success animation
-      saveBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Saved!';
-      saveBtn.style.background = 'linear-gradient(135deg, #00D562, #00A651)';
-      saveBtn.style.transform = 'scale(1)';
-      
       // Notify content script to apply changes
       chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
         if (tabs[0] && tabs[0].url && tabs[0].url.includes('youtube.com')) {
@@ -92,35 +71,30 @@ document.addEventListener('DOMContentLoaded', () => {
           }, (response) => {
             if (chrome.runtime.lastError) {
               console.log('Message sending error:', chrome.runtime.lastError.message);
-              // Reload the tab to apply settings
-              chrome.tabs.reload(tabs[0].id);
             } else {
               console.log('Settings applied successfully');
             }
           });
         }
       });
-      
-      // Reset after delay
-      setTimeout(() => {
-        saveBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> Save';
-        saveBtn.style.background = 'linear-gradient(135deg, #4f82ff 0%, #3461e6 100%)';
-      }, 2000);
     });
+  };
+
+  // Real-time speed display update with auto-save
+  speedInput.addEventListener('input', (e) => {
+    updateSpeedDisplay(e.target.value);
+    speedDisplay.style.transform = 'scale(1.05)';
+    setTimeout(() => {
+      speedDisplay.style.transform = 'scale(1)';
+    }, 150);
+    autoSave();
   });
 
-  // Reset functionality
-  resetBtn.addEventListener('click', () => {
-    speedInput.value = defaults.speed;
-    skipAdsCheckbox.checked = defaults.skipAds;
-    updateSpeedDisplay(defaults.speed);
-    
-    // Visual feedback
-    resetBtn.innerHTML = '<span>✨</span>Reset Complete!';
-    setTimeout(() => {
-      resetBtn.innerHTML = '<span>🔄</span>Reset to Defaults';
-    }, 1500);
-  });
+  // Auto-save on checkbox changes
+  skipAdsCheckbox.addEventListener('change', autoSave);
+  hideCommentsCheckbox.addEventListener('change', autoSave);
+  hideShortsCheckbox.addEventListener('change', autoSave);
+  hideDescriptionCheckbox.addEventListener('change', autoSave);
 
   // Add hover effects for interactive elements
   document.querySelectorAll('.control-group').forEach(group => {
@@ -133,13 +107,53 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  // Theme toggle functionality
+  const themeToggle = document.getElementById('themeToggle');
+  
+  // Load saved theme
+  chrome.storage.sync.get(['theme'], (data) => {
+    const theme = data.theme || 'youtube';
+    if (theme === 'blue') {
+      document.documentElement.setAttribute('data-theme', 'blue');
+    }
+  });
+  
+  themeToggle.addEventListener('click', () => {
+    const currentTheme = document.documentElement.getAttribute('data-theme');
+    const newTheme = currentTheme === 'blue' ? 'youtube' : 'blue';
+    
+    if (newTheme === 'blue') {
+      document.documentElement.setAttribute('data-theme', 'blue');
+    } else {
+      document.documentElement.removeAttribute('data-theme');
+    }
+    
+    // Save theme preference
+    chrome.storage.sync.set({ theme: newTheme });
+  });
+
   // Keyboard navigation
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && e.target === speedInput) {
-      saveBtn.click();
-    }
     if (e.key === 'Escape') {
       window.close();
     }
+  });
+
+  // Tab switching functionality
+  const tabs = document.querySelectorAll('.tab');
+  const tabContents = document.querySelectorAll('.tab-content');
+
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      const targetTab = tab.getAttribute('data-tab');
+      
+      // Remove active class from all tabs and contents
+      tabs.forEach(t => t.classList.remove('active'));
+      tabContents.forEach(content => content.classList.remove('active'));
+      
+      // Add active class to clicked tab and corresponding content
+      tab.classList.add('active');
+      document.getElementById(targetTab).classList.add('active');
+    });
   });
 });
