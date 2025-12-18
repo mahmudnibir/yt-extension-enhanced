@@ -576,6 +576,187 @@
       color: var(--text-primary);
     }
     
+    /* Modal Overlay */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10000;
+      animation: fadeIn 0.2s ease;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    
+    .modal {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 24px;
+      max-width: 320px;
+      width: 90%;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+      animation: slideUp 0.3s ease;
+    }
+    
+    @keyframes slideUp {
+      from { transform: translateY(20px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+    
+    .modal-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    
+    .modal-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(239, 68, 68, 0.15);
+    }
+    
+    .modal-icon svg {
+      width: 22px;
+      height: 22px;
+      stroke: #ef4444;
+    }
+    
+    .modal-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+    
+    .modal-body {
+      margin-bottom: 20px;
+    }
+    
+    .modal-text {
+      color: var(--text-secondary);
+      font-size: 12px;
+      line-height: 1.6;
+      margin-bottom: 12px;
+    }
+    
+    .modal-warning {
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      border-radius: 8px;
+      padding: 10px;
+      color: rgba(239, 68, 68, 0.95);
+      font-size: 11px;
+      margin-top: 12px;
+      font-weight: 500;
+    }
+    
+    .modal-input {
+      width: 100%;
+      padding: 10px 12px;
+      background: var(--bg-tertiary);
+      border: 1.5px solid var(--border-color);
+      border-radius: 8px;
+      color: var(--text-primary);
+      font-size: 13px;
+      font-family: monospace;
+      outline: none;
+      transition: all 0.2s;
+      margin-top: 8px;
+    }
+    
+    .modal-input:focus {
+      border-color: var(--accent-color);
+      background: var(--bg-card);
+    }
+    
+    .modal-input.error {
+      border-color: #ef4444;
+      animation: shake 0.4s;
+    }
+    
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-5px); }
+      75% { transform: translateX(5px); }
+    }
+    
+    .modal-label {
+      display: block;
+      color: var(--text-secondary);
+      font-size: 11px;
+      margin-bottom: 4px;
+      font-weight: 600;
+    }
+    
+    .modal-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 20px;
+    }
+    
+    .modal-btn {
+      flex: 1;
+      padding: 10px 16px;
+      border: 1.5px solid var(--border-color);
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .modal-btn-primary {
+      background: var(--accent-color);
+      border-color: var(--accent-color);
+      color: white;
+    }
+    
+    .modal-btn-primary:hover {
+      background: var(--accent-hover);
+      transform: translateY(-1px);
+    }
+    
+    .modal-btn-primary:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+    
+    .modal-btn-secondary {
+      background: transparent;
+      color: var(--text-secondary);
+    }
+    
+    .modal-btn-secondary:hover {
+      background: var(--bg-card);
+      color: var(--text-primary);
+    }
+    
+    .modal-btn-export {
+      background: transparent;
+      border-color: var(--accent-color);
+      color: var(--accent-color);
+    }
+    
+    .modal-btn-export:hover {
+      background: var(--accent-color);
+      color: white;
+    }
+    
     /* Footer */
     footer {
       border-top: 1px solid var(--border-color);
@@ -1073,7 +1254,7 @@
             </label>
           </div>
         </div>
-        <div class="setting-item setting-item-full disabled">
+        <div class="setting-item setting-item-full">
           <div style="display: flex; align-items: center; gap: 12px;">
             <div class="setting-icon icon-destructive">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1083,10 +1264,10 @@
             </div>
             <div class="setting-content">
               <div class="setting-title">Clear All Data</div>
-              <div class="setting-desc">Remove saved settings</div>
+              <div class="setting-desc">Remove all bookmarks and settings</div>
             </div>
           </div>
-          <button class="btn-clear" disabled>
+          <button id="clearDataBtn" class="btn-clear">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <polyline points="3 6 5 6 21 6"></polyline>
             </svg>

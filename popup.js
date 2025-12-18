@@ -273,4 +273,221 @@ document.addEventListener('DOMContentLoaded', () => {
       document.getElementById(targetTab).classList.add('active');
     });
   });
+
+  // Clear All Data functionality
+  const clearDataBtn = document.getElementById('clearDataBtn');
+  
+  clearDataBtn.addEventListener('click', async () => {
+    // Step 1: Initial confirmation
+    const confirmed = await showModal({
+      title: 'Clear All Data',
+      message: 'This will permanently delete all your bookmarks, settings, and video-specific speeds. This action cannot be undone.',
+      warning: '⚠️ This is a destructive action and cannot be reversed.',
+      buttons: [
+        { text: 'Cancel', type: 'secondary' },
+        { text: 'Continue', type: 'primary' }
+      ]
+    });
+
+    if (!confirmed) return;
+
+    // Step 2: Type confirmation
+    const typeConfirmed = await showConfirmationInput({
+      title: 'Type to Confirm',
+      message: 'To confirm deletion, please type <strong>DELETE ALL DATA</strong> in the box below:',
+      confirmText: 'DELETE ALL DATA',
+      placeholder: 'Type here...'
+    });
+
+    if (!typeConfirmed) return;
+
+    // Step 3: Offer to export data
+    const exportData = await showModal({
+      title: 'Export Data First?',
+      message: 'Would you like to export your bookmarks before deleting everything? This will download a backup file.',
+      buttons: [
+        { text: 'Skip Export', type: 'secondary' },
+        { text: 'Export & Delete', type: 'export' }
+      ]
+    });
+
+    if (exportData === 'export') {
+      await exportBookmarks();
+    }
+
+    // Step 4: Final deletion
+    performClearData();
+  });
+
+  // Create modal dialog
+  function showModal({ title, message, warning, buttons }) {
+    return new Promise((resolve) => {
+      const overlay = document.createElement('div');
+      overlay.className = 'modal-overlay';
+      
+      overlay.innerHTML = `
+        <div class="modal">
+          <div class="modal-header">
+            <div class="modal-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                <line x1="12" y1="9" x2="12" y2="13"></line>
+                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+              </svg>
+            </div>
+            <div class="modal-title">${title}</div>
+          </div>
+          <div class="modal-body">
+            <div class="modal-text">${message}</div>
+            ${warning ? `<div class="modal-warning">${warning}</div>` : ''}
+          </div>
+          <div class="modal-actions">
+            ${buttons.map((btn, idx) => `
+              <button class="modal-btn modal-btn-${btn.type}" data-index="${idx}">${btn.text}</button>
+            `).join('')}
+          </div>
+        </div>
+      `;
+      
+      document.body.appendChild(overlay);
+      
+      overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) {
+          overlay.remove();
+          resolve(false);
+        }
+        
+        const btn = e.target.closest('.modal-btn');
+        if (btn) {
+          const index = parseInt(btn.dataset.index);
+          overlay.remove();
+          resolve(buttons[index].type === 'secondary' ? false : buttons[index].type);
+        }
+      });
+    });
+  }
+
+  // Create confirmation input modal
+  function showConfirmationInput({ title, message, confirmText, placeholder }) {
+    return new Promise((resolve) => {
+      const overlay = document.createElement('div');
+      overlay.className = 'modal-overlay';
+      
+      overlay.innerHTML = `
+        <div class="modal">
+          <div class="modal-header">
+            <div class="modal-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+              </svg>
+            </div>
+            <div class="modal-title">${title}</div>
+          </div>
+          <div class="modal-body">
+            <div class="modal-text">${message}</div>
+            <label class="modal-label">Confirmation Text</label>
+            <input type="text" class="modal-input" placeholder="${placeholder}" id="confirmInput">
+          </div>
+          <div class="modal-actions">
+            <button class="modal-btn modal-btn-secondary" id="cancelBtn">Cancel</button>
+            <button class="modal-btn modal-btn-primary" id="confirmBtn" disabled>Confirm</button>
+          </div>
+        </div>
+      `;
+      
+      document.body.appendChild(overlay);
+      
+      const input = overlay.querySelector('#confirmInput');
+      const confirmBtn = overlay.querySelector('#confirmBtn');
+      const cancelBtn = overlay.querySelector('#cancelBtn');
+      
+      input.addEventListener('input', () => {
+        if (input.value === confirmText) {
+          confirmBtn.disabled = false;
+          input.classList.remove('error');
+        } else {
+          confirmBtn.disabled = true;
+        }
+      });
+      
+      confirmBtn.addEventListener('click', () => {
+        if (input.value === confirmText) {
+          overlay.remove();
+          resolve(true);
+        } else {
+          input.classList.add('error');
+          setTimeout(() => input.classList.remove('error'), 400);
+        }
+      });
+      
+      cancelBtn.addEventListener('click', () => {
+        overlay.remove();
+        resolve(false);
+      });
+      
+      overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) {
+          overlay.remove();
+          resolve(false);
+        }
+      });
+      
+      input.focus();
+    });
+  }
+
+  // Export bookmarks function
+  async function exportBookmarks() {
+    return new Promise((resolve) => {
+      chrome.storage.local.get(null, (data) => {
+        const bookmarkData = {};
+        
+        // Filter bookmark data
+        for (const key in data) {
+          if (key.startsWith('yt_bm_')) {
+            bookmarkData[key] = data[key];
+          }
+        }
+        
+        chrome.storage.sync.get(null, (syncData) => {
+          const exportData = {
+            bookmarks: bookmarkData,
+            settings: syncData,
+            exportDate: new Date().toISOString(),
+            version: '2.0'
+          };
+          
+          const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `youtube-enhancer-backup-${Date.now()}.json`;
+          a.click();
+          URL.revokeObjectURL(url);
+          
+          setTimeout(() => resolve(), 500);
+        });
+      });
+    });
+  }
+
+  // Perform the actual data clearing
+  function performClearData() {
+    chrome.storage.local.clear(() => {
+      chrome.storage.sync.clear(() => {
+        // Show success message
+        showModal({
+          title: 'Data Cleared',
+          message: 'All data has been successfully deleted. The extension will now reset to default settings.',
+          buttons: [
+            { text: 'Close', type: 'primary' }
+          ]
+        }).then(() => {
+          window.location.reload();
+        });
+      });
+    });
+  }
 });
