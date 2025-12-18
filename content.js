@@ -264,6 +264,14 @@
     if (request.action === 'updateSettings') {
       console.log('Received updateSettings message');
       applyContentControls();
+      if (typeof request.speed !== 'undefined') {
+        const video = document.querySelector('video');
+        if (video && !isNaN(request.speed)) {
+          video.playbackRate = parseFloat(request.speed);
+          showSpeedOverlay(request.speed);
+          saveSpeed(request.speed);
+        }
+      }
       sendResponse({success: true});
     }
     if (request.action === 'updateShortcuts') {

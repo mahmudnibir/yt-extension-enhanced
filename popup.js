@@ -70,17 +70,18 @@ document.addEventListener('DOMContentLoaded', () => {
       rememberSpeed,
       cloudSync
     }, () => {
-      // Notify content script to apply changes
+      // Notify content script to apply changes and update speed immediately
       chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
         if (tabs[0] && tabs[0].url && tabs[0].url.includes('youtube.com')) {
           chrome.tabs.sendMessage(tabs[0].id, {
             action: 'updateSettings',
+            speed: speed,
             settings: { hideComments, hideShorts, hideDescription, hideSuggestions }
           }, (response) => {
             if (chrome.runtime.lastError) {
               console.log('Message sending error:', chrome.runtime.lastError.message);
             } else {
-              console.log('Settings applied successfully');
+              console.log('Settings and speed applied successfully');
             }
           });
         }
