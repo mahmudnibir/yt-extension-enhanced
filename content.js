@@ -51,7 +51,7 @@
     if (!videoId) return;
     storageKey = `yt_bm_${videoId}`;
 
-    chrome.storage.local.get([storageKey], (res) => {
+    chrome.storage.sync.get([storageKey], (res) => {
       bookmarks = Array.isArray(res[storageKey]) ? res[storageKey] : [];
       bookmarks.sort((a, b) => a.time - b.time);
       bookmarks.forEach(bm => addBookmarkMarker(bm.time, bm.label));
@@ -257,9 +257,15 @@
         const newBookmark = { time, label: "" };
         bookmarks.push(newBookmark);
         bookmarks.sort((a, b) => a.time - b.time);
-        chrome.storage.local.set({ [storageKey]: bookmarks }, () => {
-          addBookmarkMarker(time);
-          currentIndex = bookmarks.findIndex(b => b.time === time);
+        chrome.storage.sync.set({ [storageKey]: bookmarks }, () => {
+          if (chrome.runtime.lastError) {
+            // Storage quota exceeded - show premium compliment
+            bookmarks.pop(); // Remove the bookmark we just added
+            alert('🎉 Wow! You\'re a power user! 🌟\n\nYou\'ve reached the cloud sync limit with your extensive bookmarks collection. Consider removing some old bookmarks to continue syncing across devices.\n\nTip: Your existing bookmarks are safely stored!');
+          } else {
+            addBookmarkMarker(time);
+            currentIndex = bookmarks.findIndex(b => b.time === time);
+          }
         });
       }
       return;
@@ -288,8 +294,16 @@
       const time = Math.floor(video.currentTime);
       const existing = bookmarks.find(bm => bm.time === time);
       if (existing) {
+        const oldLabel = existing.label;
         existing.label = label;
-        chrome.storage.local.set({ [storageKey]: bookmarks }, refreshMarkers);
+        chrome.storage.sync.set({ [storageKey]: bookmarks }, () => {
+          if (chrome.runtime.lastError) {
+            existing.label = oldLabel; // Revert
+            alert('🎉 Power User Alert! 🌟\n\nYour bookmark collection is at maximum cloud sync capacity. Try shorter labels or remove old bookmarks to continue.');
+          } else {
+            refreshMarkers();
+          }
+        });
       }
       return;
     }
@@ -298,14 +312,14 @@
     if (matchesShortcut(e, shortcuts.removeBookmark)) {
       const time = Math.floor(video.currentTime);
       bookmarks = bookmarks.filter(bm => bm.time !== time);
-      chrome.storage.local.set({ [storageKey]: bookmarks }, () => refreshMarkers());
+      chrome.storage.sync.set({ [storageKey]: bookmarks }, () => refreshMarkers());
       return;
     }
 
     // Clear all bookmarks shortcut
     if (matchesShortcut(e, shortcuts.clearBookmarks)) {
       bookmarks = [];
-      chrome.storage.local.remove(storageKey, refreshMarkers);
+      chrome.storage.sync.remove(storageKey, refreshMarkers);
       return;
     }
 
@@ -905,10 +919,15 @@
       const newBookmark = { time, label: "" };
       bookmarks.push(newBookmark);
       bookmarks.sort((a, b) => a.time - b.time);
-      chrome.storage.local.set({ [storageKey]: bookmarks }, () => {
-        addBookmarkMarker(time);
-        currentIndex = bookmarks.findIndex(b => b.time === time);
-        refreshBookmarkList();
+      chrome.storage.sync.set({ [storageKey]: bookmarks }, () => {
+        if (chrome.runtime.lastError) {
+          bookmarks.pop();
+          alert('🎉 Wow! You\'re a power user! 🌟\n\nYou\'ve reached the cloud sync limit with your extensive bookmarks collection. Consider removing some old bookmarks to continue syncing across devices.\n\nTip: Your existing bookmarks are safely stored!');
+        } else {
+          addBookmarkMarker(time);
+          currentIndex = bookmarks.findIndex(b => b.time === time);
+          refreshBookmarkList();
+        }
       });
     }
   }
@@ -1020,8 +1039,17 @@
         labelInput.style.background = 'transparent';
         labelInput.style.padding = '4px';
         item.classList.remove('yt-bookmark-item-expanded');
+        const oldLabel = bm.label;
         bm.label = labelInput.value;
-        chrome.storage.local.set({ [storageKey]: bookmarks }, refreshMarkers);
+        chrome.storage.sync.set({ [storageKey]: bookmarks }, () => {
+          if (chrome.runtime.lastError) {
+            bm.label = oldLabel;
+            labelInput.value = oldLabel;
+            alert('🎉 Power User Alert! 🌟\n\nYour bookmark collection is at maximum cloud sync capacity. Try shorter labels or remove old bookmarks to continue.');
+          } else {
+            refreshMarkers();
+          }
+        });
       };
 
       labelInput.onclick = (e) => {
@@ -1114,7 +1142,7 @@
         
         // Remove bookmark
         bookmarks.splice(index, 1);
-        chrome.storage.local.set({ [storageKey]: bookmarks }, () => {
+        chrome.storage.sync.set({ [storageKey]: bookmarks }, () => {
           refreshMarkers();
           refreshBookmarkList();
           updateUndoButton();
@@ -1139,10 +1167,16 @@
     const lastDeleted = deletedBookmarks.pop();
     bookmarks.splice(lastDeleted.index, 0, lastDeleted.bookmark);
     
-    chrome.storage.local.set({ [storageKey]: bookmarks }, () => {
-      refreshMarkers();
-      refreshBookmarkList();
-      updateUndoButton();
+    chrome.storage.sync.set({ [storageKey]: bookmarks }, () => {
+      if (chrome.runtime.lastError) {
+        bookmarks.splice(lastDeleted.index, 1);
+        deletedBookmarks.push(lastDeleted);
+        alert('🎉 Power User! 🌟\n\nCloud sync is at capacity. Remove some bookmarks first to restore this one.');
+      } else {
+        refreshMarkers();
+        refreshBookmarkList();
+        updateUndoButton();
+      }
     });
   }
 
@@ -1257,11 +1291,16 @@
           unique.sort((a, b) => a.time - b.time);
 
           bookmarks = unique;
-          chrome.storage.local.set({ [storageKey]: bookmarks }, () => {
-            refreshMarkers();
-            refreshBookmarkList();
-            alert(`Imported ${importData.bookmarks.length} bookmarks!`);
-          });
+          chrome.storage.sync.set({ [storageKey]: bookmarks }, () => {
+            if (chrome.runtime.lastError) {
+              bookmarks = bookmarks.slice(0, -importData.bookmarks.length); // Revert
+              alert('🎉 Amazing! You\'re a super user! 🌟\n\nYou\'ve hit the cloud sync limit. Try importing fewer bookmarks or remove some existing ones first.\n\nYour data is safe!');
+            } else {
+              refreshMarkers();
+              refreshBookmarkList();
+              alert(`Imported ${importData.bookmarks.length} bookmarks!`);
+            }
+          });}
         } catch (error) {
           alert('Error reading bookmark file!');
           console.error(error);

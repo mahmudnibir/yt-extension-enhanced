@@ -437,22 +437,24 @@ document.addEventListener('DOMContentLoaded', () => {
   // Export bookmarks function
   async function exportBookmarks() {
     return new Promise((resolve) => {
-      chrome.storage.local.get(null, (data) => {
+      chrome.storage.sync.get(null, (syncData) => {
         const bookmarkData = {};
         
-        // Filter bookmark data
-        for (const key in data) {
+        // Filter bookmark data from sync storage
+        for (const key in syncData) {
           if (key.startsWith('yt_bm_')) {
-            bookmarkData[key] = data[key];
+            bookmarkData[key] = syncData[key];
           }
         }
         
-        chrome.storage.sync.get(null, (syncData) => {
+        chrome.storage.local.get(['statistics', 'totalTimeSaved'], (localData) => {
           const exportData = {
             bookmarks: bookmarkData,
             settings: syncData,
+            statistics: localData.statistics || {},
+            totalTimeSaved: localData.totalTimeSaved || 0,
             exportDate: new Date().toISOString(),
-            version: '2.0'
+            version: '2.0.1'
           };
           
           const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
