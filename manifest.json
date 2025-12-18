@@ -22,5 +22,8 @@
     "16": "youtube.png",
     "48": "youtube.png",
     "128": "youtube.png"
+  },
+  "background": {
+    "service_worker": "background.js"
   }
 }
