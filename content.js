@@ -109,7 +109,7 @@
   
   // Function to hide/show content based on settings
   function applyContentControls() {
-    chrome.storage.sync.get(['hideComments', 'hideShorts', 'hideDescription'], (data) => {
+    chrome.storage.sync.get(['hideComments', 'hideShorts', 'hideDescription', 'hideSuggestions'], (data) => {
       console.log('Applying content controls:', data);
       
       // Hide comments
@@ -131,6 +131,13 @@
         hideDescription();
       } else {
         showDescription();
+      }
+      
+      // Hide suggestions
+      if (data.hideSuggestions) {
+        hideSuggestions();
+      } else {
+        showSuggestions();
       }
     });
   }
@@ -216,6 +223,38 @@
     if (style) {
       style.remove();
       console.log('Description shown');
+    }
+  }
+  
+  function hideSuggestions() {
+    const style = document.getElementById('yt-hide-suggestions-style') || document.createElement('style');
+    style.id = 'yt-hide-suggestions-style';
+    style.textContent = `
+      #related,
+      #secondary,
+      #secondary-inner,
+      ytd-watch-next-secondary-results-renderer,
+      ytd-compact-video-renderer,
+      ytd-item-section-renderer.ytd-watch-next-secondary-results-renderer,
+      .ytp-ce-element,
+      .ytp-endscreen-content,
+      .ytp-ce-covering-overlay,
+      .ytp-ce-element-show,
+      ytd-compact-autoplay-renderer {
+        display: none !important;
+      }
+    `;
+    if (!document.getElementById('yt-hide-suggestions-style')) {
+      document.head.appendChild(style);
+    }
+    console.log('Suggestions hidden');
+  }
+  
+  function showSuggestions() {
+    const style = document.getElementById('yt-hide-suggestions-style');
+    if (style) {
+      style.remove();
+      console.log('Suggestions shown');
     }
   }
   

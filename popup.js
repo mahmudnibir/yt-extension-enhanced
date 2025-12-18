@@ -5,6 +5,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const hideCommentsCheckbox = document.getElementById('hideComments');
   const hideShortsCheckbox = document.getElementById('hideShorts');
   const hideDescriptionCheckbox = document.getElementById('hideDescription');
+  const hideSuggestionsCheckbox = document.getElementById('hideSuggestions');
   const rememberSpeedCheckbox = document.getElementById('rememberSpeed');
   const cloudSyncCheckbox = document.getElementById('cloudSync');
   const cloudSyncDesc = document.getElementById('cloudSyncDesc');
@@ -16,6 +17,7 @@ document.addEventListener('DOMContentLoaded', () => {
     hideComments: false,
     hideShorts: false,
     hideDescription: false,
+    hideSuggestions: false,
     rememberSpeed: false,
     cloudSync: true
   };
@@ -33,6 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
     hideCommentsCheckbox.checked = data.hideComments || false;
     hideShortsCheckbox.checked = data.hideShorts || false;
     hideDescriptionCheckbox.checked = data.hideDescription || false;
+    hideSuggestionsCheckbox.checked = data.hideSuggestions || false;
     rememberSpeedCheckbox.checked = data.rememberSpeed || false;
     cloudSyncCheckbox.checked = data.cloudSync !== false;
     updateCloudSyncDesc(data.cloudSync !== false);
@@ -53,6 +56,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const hideComments = !!hideCommentsCheckbox.checked;
     const hideShorts = !!hideShortsCheckbox.checked;
     const hideDescription = !!hideDescriptionCheckbox.checked;
+    const hideSuggestions = !!hideSuggestionsCheckbox.checked;
     const rememberSpeed = !!rememberSpeedCheckbox.checked;
     const cloudSync = !!cloudSyncCheckbox.checked;
     
@@ -62,6 +66,7 @@ document.addEventListener('DOMContentLoaded', () => {
       hideComments,
       hideShorts,
       hideDescription,
+      hideSuggestions,
       rememberSpeed,
       cloudSync
     }, () => {
@@ -70,7 +75,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (tabs[0] && tabs[0].url && tabs[0].url.includes('youtube.com')) {
           chrome.tabs.sendMessage(tabs[0].id, {
             action: 'updateSettings',
-            settings: { hideComments, hideShorts, hideDescription }
+            settings: { hideComments, hideShorts, hideDescription, hideSuggestions }
           }, (response) => {
             if (chrome.runtime.lastError) {
               console.log('Message sending error:', chrome.runtime.lastError.message);
@@ -98,6 +103,7 @@ document.addEventListener('DOMContentLoaded', () => {
   rememberSpeedCheckbox.addEventListener('change', autoSave);
   hideCommentsCheckbox.addEventListener('change', autoSave);
   hideShortsCheckbox.addEventListener('change', autoSave);
+  hideSuggestionsCheckbox.addEventListener('change', autoSave);
   hideDescriptionCheckbox.addEventListener('change', autoSave);
   
   // Cloud sync toggle with migration
