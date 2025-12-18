@@ -21,15 +21,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const updateSpeedDisplay = (value) => {
     const speed = parseFloat(value);
     speedDisplay.textContent = `${speed.toFixed(1)}×`;
-    
-    // Add visual feedback for extreme speeds
-    if (speed >= 2.5) {
-      speedDisplay.style.background = 'linear-gradient(135deg, #FF6B35, #F7931E)';
-    } else if (speed <= 0.5) {
-      speedDisplay.style.background = 'linear-gradient(135deg, #4ECDC4, #44A08D)';
-    } else {
-      speedDisplay.style.background = 'transparent';
-    }
   };
 
   // Load stored settings with animation
