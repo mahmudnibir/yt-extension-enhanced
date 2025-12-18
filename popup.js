@@ -6,6 +6,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const hideShortsCheckbox = document.getElementById('hideShorts');
   const hideDescriptionCheckbox = document.getElementById('hideDescription');
   const rememberSpeedCheckbox = document.getElementById('rememberSpeed');
+  const cloudSyncCheckbox = document.getElementById('cloudSync');
+  const cloudSyncDesc = document.getElementById('cloudSyncDesc');
 
   // Default values
   const defaults = { 
@@ -14,7 +16,8 @@ document.addEventListener('DOMContentLoaded', () => {
     hideComments: false,
     hideShorts: false,
     hideDescription: false,
-    rememberSpeed: false
+    rememberSpeed: false,
+    cloudSync: true
   };
 
   // Update speed display with enhanced formatting
@@ -31,6 +34,8 @@ document.addEventListener('DOMContentLoaded', () => {
     hideShortsCheckbox.checked = data.hideShorts || false;
     hideDescriptionCheckbox.checked = data.hideDescription || false;
     rememberSpeedCheckbox.checked = data.rememberSpeed || false;
+    cloudSyncCheckbox.checked = data.cloudSync !== false;
+    updateCloudSyncDesc(data.cloudSync !== false);
     updateSpeedDisplay(data.speed);
     
     // Animate elements in
@@ -49,6 +54,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const hideShorts = !!hideShortsCheckbox.checked;
     const hideDescription = !!hideDescriptionCheckbox.checked;
     const rememberSpeed = !!rememberSpeedCheckbox.checked;
+    const cloudSync = !!cloudSyncCheckbox.checked;
     
     chrome.storage.sync.set({
       speed: speed.toString(),
@@ -56,7 +62,8 @@ document.addEventListener('DOMContentLoaded', () => {
       hideComments,
       hideShorts,
       hideDescription,
-      rememberSpeed
+      rememberSpeed,
+      cloudSync
     }, () => {
       // Notify content script to apply changes
       chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
@@ -92,6 +99,67 @@ document.addEventListener('DOMContentLoaded', () => {
   hideCommentsCheckbox.addEventListener('change', autoSave);
   hideShortsCheckbox.addEventListener('change', autoSave);
   hideDescriptionCheckbox.addEventListener('change', autoSave);
+  
+  // Cloud sync toggle with migration
+  cloudSyncCheckbox.addEventListener('change', async () => {
+    const isCloudSync = cloudSyncCheckbox.checked;
+    updateCloudSyncDesc(isCloudSync);
+    
+    // Migrate bookmarks between storage types
+    await migrateBookmarks(isCloudSync);
+    
+    autoSave();
+  });
+  
+  // Update cloud sync description
+  function updateCloudSyncDesc(isCloudSync) {
+    if (isCloudSync) {
+      cloudSyncDesc.textContent = 'Sync bookmarks across devices (~50-100 limit)';
+    } else {
+      cloudSyncDesc.textContent = 'Local storage only (unlimited bookmarks)';
+    }
+  }
+  
+  // Migrate bookmarks between storage types
+  async function migrateBookmarks(toCloudSync) {
+    const sourceStorage = toCloudSync ? chrome.storage.local : chrome.storage.sync;
+    const targetStorage = toCloudSync ? chrome.storage.sync : chrome.storage.local;
+    
+    return new Promise((resolve) => {
+      sourceStorage.get(null, (sourceData) => {
+        const bookmarkData = {};
+        let hasBookmarks = false;
+        
+        // Find all bookmark keys
+        for (const key in sourceData) {
+          if (key.startsWith('yt_bm_')) {
+            bookmarkData[key] = sourceData[key];
+            hasBookmarks = true;
+          }
+        }
+        
+        if (!hasBookmarks) {
+          resolve();
+          return;
+        }
+        
+        // Copy to target storage
+        targetStorage.set(bookmarkData, () => {
+          if (chrome.runtime.lastError) {
+            alert(`⚠️ Migration failed: ${chrome.runtime.lastError.message}\n\nYou may have too many bookmarks for cloud sync. Try removing some first.`);
+            cloudSyncCheckbox.checked = !toCloudSync;
+            updateCloudSyncDesc(!toCloudSync);
+          } else {
+            // Remove from source storage
+            sourceStorage.remove(Object.keys(bookmarkData), () => {
+              alert(`✅ Successfully migrated ${Object.keys(bookmarkData).length} video(s) of bookmarks to ${toCloudSync ? 'cloud sync' : 'local storage'}!`);
+            });
+          }
+          resolve();
+        });
+      });
+    });
+  }
 
   // Add hover effects for interactive elements
   document.querySelectorAll('.control-group').forEach(group => {
@@ -437,35 +505,43 @@ document.addEventListener('DOMContentLoaded', () => {
   // Export bookmarks function
   async function exportBookmarks() {
     return new Promise((resolve) => {
-      chrome.storage.sync.get(null, (syncData) => {
-        const bookmarkData = {};
+      chrome.storage.sync.get(['cloudSync'], (result) => {
+        const useCloudSync = result.cloudSync !== false;
+        const bookmarkStorage = useCloudSync ? chrome.storage.sync : chrome.storage.local;
         
-        // Filter bookmark data from sync storage
-        for (const key in syncData) {
-          if (key.startsWith('yt_bm_')) {
-            bookmarkData[key] = syncData[key];
-          }
-        }
-        
-        chrome.storage.local.get(['statistics', 'totalTimeSaved'], (localData) => {
-          const exportData = {
-            bookmarks: bookmarkData,
-            settings: syncData,
-            statistics: localData.statistics || {},
-            totalTimeSaved: localData.totalTimeSaved || 0,
-            exportDate: new Date().toISOString(),
-            version: '2.0.1'
-          };
-          
-          const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = `youtube-enhancer-backup-${Date.now()}.json`;
-          a.click();
-          URL.revokeObjectURL(url);
-          
-          setTimeout(() => resolve(), 500);
+        chrome.storage.sync.get(null, (syncData) => {
+          bookmarkStorage.get(null, (bookmarkStorageData) => {
+            const bookmarkData = {};
+            
+            // Filter bookmark data from appropriate storage
+            for (const key in bookmarkStorageData) {
+              if (key.startsWith('yt_bm_')) {
+                bookmarkData[key] = bookmarkStorageData[key];
+              }
+            }
+            
+            chrome.storage.local.get(['statistics', 'totalTimeSaved'], (localData) => {
+              const exportData = {
+                bookmarks: bookmarkData,
+                settings: syncData,
+                statistics: localData.statistics || {},
+                totalTimeSaved: localData.totalTimeSaved || 0,
+                storageMode: useCloudSync ? 'cloud' : 'local',
+                exportDate: new Date().toISOString(),
+                version: '2.1.0'
+              };
+              
+              const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `youtube-enhancer-backup-${Date.now()}.json`;
+              a.click();
+              URL.revokeObjectURL(url);
+              
+              setTimeout(() => resolve(), 500);
+            });
+          });
         });
       });
     });
