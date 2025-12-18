@@ -306,16 +306,21 @@ document.addEventListener('DOMContentLoaded', () => {
       title: 'Export Data First?',
       message: 'Would you like to export your bookmarks before deleting everything? This will download a backup file.',
       buttons: [
-        { text: 'Skip Export', type: 'secondary' },
+        { text: 'Cancel', type: 'cancel' },
+        { text: 'Skip & Delete', type: 'skip' },
         { text: 'Export & Delete', type: 'export' }
       ]
     });
 
+    // If user cancelled or clicked outside, stop
+    if (!exportData || exportData === 'cancel') return;
+
+    // Export if user chose to
     if (exportData === 'export') {
       await exportBookmarks();
     }
 
-    // Step 4: Final deletion
+    // Step 4: Final deletion (only reaches here if user chose 'skip' or 'export')
     performClearData();
   });
 
