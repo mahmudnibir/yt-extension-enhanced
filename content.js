@@ -1328,7 +1328,7 @@
                 alert(`Imported ${importData.bookmarks.length} bookmarks!`);
               }
             });
-          });}
+          });
         } catch (error) {
           alert('Error reading bookmark file!');
           console.error(error);
