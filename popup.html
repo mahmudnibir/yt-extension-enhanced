@@ -55,56 +55,49 @@
     .tabs {
       display: flex;
       background: var(--bg-secondary);
-      padding: 12px 16px;
-      gap: 6px;
+      padding: 0 16px;
+      gap: 0;
       border-bottom: 1px solid var(--border-color);
     }
     
     .tab {
-      padding: 8px 18px;
+      padding: 14px 20px;
       background: transparent;
       border: none;
       color: var(--text-secondary);
-      font-size: 11px;
+      font-size: 13px;
       font-weight: 600;
       cursor: pointer;
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      border-radius: 20px;
+      transition: all 0.2s ease;
       position: relative;
-      overflow: hidden;
-      letter-spacing: 0.3px;
+      letter-spacing: 0.2px;
+      border-bottom: 2px solid transparent;
     }
     
-    .tab::before {
+    .tab::after {
       content: '';
       position: absolute;
-      top: 0;
+      bottom: -1px;
       left: 0;
       width: 100%;
-      height: 100%;
-      background: var(--bg-card);
-      opacity: 0;
-      transition: opacity 0.3s;
-      z-index: -1;
+      height: 2px;
+      background: var(--accent-color);
+      transform: scaleX(0);
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
     
     .tab:hover {
       color: var(--text-primary);
-      transform: translateY(-1px);
-    }
-    
-    .tab:hover::before {
-      opacity: 1;
+      background: rgba(255, 255, 255, 0.03);
     }
     
     .tab.active {
-      color: white;
-      background: var(--accent-color);
-      transform: translateY(0);
+      color: var(--text-primary);
+      background: transparent;
     }
     
-    .tab.active::before {
-      opacity: 0;
+    .tab.active::after {
+      transform: scaleX(1);
     }
     
     .tab-content {
