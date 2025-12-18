@@ -486,4 +486,109 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     });
   }
+
+  // Statistics Functions
+  function formatTime(minutes) {
+    const hours = Math.floor(minutes / 60);
+    const mins = Math.floor(minutes % 60);
+    if (hours > 0) {
+      return `${hours}h ${mins}m`;
+    }
+    return `${mins}m`;
+  }
+
+  function formatTimeShort(minutes) {
+    const hours = Math.floor(minutes / 60);
+    const mins = Math.floor(minutes % 60);
+    if (hours > 0) {
+      return `${hours}h`;
+    }
+    return `${mins}m`;
+  }
+
+  function loadStatistics() {
+    chrome.storage.local.get(['statistics'], (data) => {
+      const stats = data.statistics || {
+        totalVideos: 0,
+        totalWatchTime: 0,
+        totalTimeSaved: 0,
+        speedUsage: {},
+        dailyStats: {},
+        weeklyStats: []
+      };
+
+      // Update overall statistics
+      document.getElementById('totalVideos').textContent = stats.totalVideos || 0;
+      document.getElementById('totalWatchTime').textContent = formatTime(stats.totalWatchTime || 0);
+      document.getElementById('timeSaved').textContent = formatTime(stats.totalTimeSaved || 0);
+
+      // Calculate average speed
+      const speedUsage = stats.speedUsage || {};
+      const speeds = Object.keys(speedUsage);
+      if (speeds.length > 0) {
+        let totalSpeedTime = 0;
+        let weightedSpeed = 0;
+        speeds.forEach(speed => {
+          const time = speedUsage[speed];
+          totalSpeedTime += time;
+          weightedSpeed += parseFloat(speed) * time;
+        });
+        const avgSpeed = totalSpeedTime > 0 ? (weightedSpeed / totalSpeedTime).toFixed(1) : '1.0';
+        document.getElementById('avgSpeed').textContent = `${avgSpeed}×`;
+      } else {
+        document.getElementById('avgSpeed').textContent = '1.0×';
+      }
+
+      // Update today's statistics
+      const today = new Date().toDateString();
+      const todayStats = stats.dailyStats[today] || { videos: 0, watchTime: 0, avgSpeed: 1.0 };
+      
+      document.getElementById('todayDate').textContent = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      document.getElementById('todayVideos').textContent = todayStats.videos || 0;
+      document.getElementById('todayTime').textContent = formatTimeShort(todayStats.watchTime || 0);
+      document.getElementById('todaySpeed').textContent = `${(todayStats.avgSpeed || 1.0).toFixed(1)}×`;
+
+      // Update weekly statistics
+      const weekAgo = new Date();
+      weekAgo.setDate(weekAgo.getDate() - 7);
+      
+      let weekVideos = 0;
+      let weekTime = 0;
+      let weekSaved = 0;
+      
+      Object.keys(stats.dailyStats).forEach(dateStr => {
+        const date = new Date(dateStr);
+        if (date >= weekAgo) {
+          const dayStats = stats.dailyStats[dateStr];
+          weekVideos += dayStats.videos || 0;
+          weekTime += dayStats.watchTime || 0;
+          weekSaved += dayStats.timeSaved || 0;
+        }
+      });
+      
+      document.getElementById('weekVideos').textContent = weekVideos;
+      document.getElementById('weekTime').textContent = formatTimeShort(weekTime);
+      document.getElementById('weekSaved').textContent = formatTimeShort(weekSaved);
+    });
+  }
+
+  // Refresh stats button
+  const refreshStatsBtn = document.getElementById('refreshStats');
+  if (refreshStatsBtn) {
+    refreshStatsBtn.addEventListener('click', () => {
+      loadStatistics();
+      
+      // Visual feedback
+      refreshStatsBtn.style.transform = 'rotate(360deg)';
+      setTimeout(() => {
+        refreshStatsBtn.style.transform = 'rotate(0deg)';
+      }, 500);
+    });
+  }
+
+  // Load statistics on page load
+  loadStatistics();
+  
+  // Refresh statistics every 30 seconds
+  setInterval(loadStatistics, 30000);
 });

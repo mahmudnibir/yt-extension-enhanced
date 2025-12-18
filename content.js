@@ -12,6 +12,12 @@
   let totalTimeSaved = 0;
   let lastUpdateTime = 0;
   
+  // Statistics tracking
+  let sessionStartTime = Date.now();
+  let currentVideoId = null;
+  let videoStartTime = 0;
+  let lastStatsUpdate = Date.now();
+  
   // Custom shortcuts with defaults
   let shortcuts = {
     addBookmark: 'P',
@@ -54,6 +60,7 @@
     document.addEventListener("keydown", handleKeyPress);
     setInterval(applySettings, 1000); // Adjust speed periodically
     setInterval(updateTimeSaved, 1000); // Track time saved
+    setInterval(updateStatistics, 10000); // Update statistics every 10 seconds
 
     addRemainingTimeOverlay(); // Add the remaining time overlay
     addBookmarkButton(); // Add bookmark button to player controls
@@ -68,6 +75,26 @@
     
     // Reapply content controls periodically for dynamic content
     setInterval(applyContentControls, 2000);
+    
+    // Initialize statistics tracking
+    initializeStatistics(videoId);
+    
+    // Track video events
+    video.addEventListener('play', () => {
+      videoStartTime = Date.now();
+      trackVideoStart(videoId);
+    });
+    
+    video.addEventListener('pause', () => {
+      if (videoStartTime > 0) {
+        trackWatchTime(videoId);
+      }
+    });
+    
+    video.addEventListener('ended', () => {
+      trackWatchTime(videoId);
+      trackVideoComplete(videoId);
+    });
   };
   
   // Function to hide/show content based on settings
@@ -1420,6 +1447,119 @@
     });
     observer.observe(body, { childList: true, subtree: true });
   };
+
+  // Statistics tracking functions
+  function initializeStatistics(videoId) {
+    currentVideoId = videoId;
+    videoStartTime = Date.now();
+  }
+
+  function trackVideoStart(videoId) {
+    chrome.storage.local.get(['statistics'], (data) => {
+      const stats = data.statistics || {
+        totalVideos: 0,
+        totalWatchTime: 0,
+        totalTimeSaved: 0,
+        speedUsage: {},
+        dailyStats: {},
+        videoHistory: []
+      };
+
+      // Track unique video
+      const today = new Date().toDateString();
+      if (!stats.dailyStats[today]) {
+        stats.dailyStats[today] = {
+          videos: 0,
+          watchTime: 0,
+          timeSaved: 0,
+          avgSpeed: 1.0,
+          speedSum: 0,
+          speedCount: 0
+        };
+      }
+
+      chrome.storage.local.set({ statistics: stats });
+    });
+  }
+
+  function trackWatchTime(videoId) {
+    if (videoStartTime === 0) return;
+
+    const watchDuration = (Date.now() - videoStartTime) / 1000 / 60; // Convert to minutes
+    const currentSpeed = video ? video.playbackRate : 1.0;
+
+    chrome.storage.local.get(['statistics'], (data) => {
+      const stats = data.statistics || {
+        totalVideos: 0,
+        totalWatchTime: 0,
+        totalTimeSaved: 0,
+        speedUsage: {},
+        dailyStats: {}
+      };
+
+      // Update total watch time
+      stats.totalWatchTime = (stats.totalWatchTime || 0) + watchDuration;
+
+      // Update speed usage
+      const speedKey = currentSpeed.toFixed(1);
+      stats.speedUsage[speedKey] = (stats.speedUsage[speedKey] || 0) + watchDuration;
+
+      // Calculate time saved
+      const timeSaved = watchDuration * (currentSpeed - 1);
+      if (timeSaved > 0) {
+        stats.totalTimeSaved = (stats.totalTimeSaved || 0) + timeSaved;
+      }
+
+      // Update daily stats
+      const today = new Date().toDateString();
+      if (!stats.dailyStats[today]) {
+        stats.dailyStats[today] = {
+          videos: 0,
+          watchTime: 0,
+          timeSaved: 0,
+          speedSum: 0,
+          speedCount: 0
+        };
+      }
+
+      stats.dailyStats[today].watchTime += watchDuration;
+      if (timeSaved > 0) {
+        stats.dailyStats[today].timeSaved += timeSaved;
+      }
+      stats.dailyStats[today].speedSum += currentSpeed;
+      stats.dailyStats[today].speedCount += 1;
+      stats.dailyStats[today].avgSpeed = stats.dailyStats[today].speedSum / stats.dailyStats[today].speedCount;
+
+      chrome.storage.local.set({ statistics: stats });
+    });
+
+    videoStartTime = Date.now(); // Reset for next tracking period
+  }
+
+  function trackVideoComplete(videoId) {
+    chrome.storage.local.get(['statistics'], (data) => {
+      const stats = data.statistics || {
+        totalVideos: 0,
+        dailyStats: {}
+      };
+
+      stats.totalVideos = (stats.totalVideos || 0) + 1;
+
+      const today = new Date().toDateString();
+      if (!stats.dailyStats[today]) {
+        stats.dailyStats[today] = { videos: 0 };
+      }
+      stats.dailyStats[today].videos = (stats.dailyStats[today].videos || 0) + 1;
+
+      chrome.storage.local.set({ statistics: stats });
+    });
+  }
+
+  function updateStatistics() {
+    if (video && !video.paused && videoStartTime > 0) {
+      trackWatchTime(currentVideoId);
+    }
+  }
 
   init();
   observeUrlChange();
