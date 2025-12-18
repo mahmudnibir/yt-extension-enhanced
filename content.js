@@ -16,7 +16,14 @@
   let shortcuts = {
     addBookmark: 'P',
     prevBookmark: 'Shift+PageDown',
-    nextBookmark: 'Shift+PageUp'
+    nextBookmark: 'Shift+PageUp',
+    labelBookmark: 'L',
+    removeBookmark: 'Shift+R',
+    clearBookmarks: 'Shift+C',
+    increaseSpeed: '+',
+    decreaseSpeed: '-',
+    showHelp: 'Shift+?',
+    toggleTime: 'Alt+R'
   };
   
   // Load custom shortcuts
@@ -247,7 +254,8 @@
       return;
     }
 
-    if (e.code === "KeyL") {
+    // Label bookmark shortcut
+    if (matchesShortcut(e, shortcuts.labelBookmark)) {
       const label = prompt("Enter bookmark label:");
       if (!label) return;
       const time = Math.floor(video.currentTime);
@@ -256,21 +264,28 @@
         existing.label = label;
         chrome.storage.local.set({ [storageKey]: bookmarks }, refreshMarkers);
       }
+      return;
     }
 
-    if (shift && e.code === "KeyR") {
+    // Remove bookmark shortcut
+    if (matchesShortcut(e, shortcuts.removeBookmark)) {
       const time = Math.floor(video.currentTime);
       bookmarks = bookmarks.filter(bm => bm.time !== time);
       chrome.storage.local.set({ [storageKey]: bookmarks }, () => refreshMarkers());
+      return;
     }
 
-    if (shift && e.code === "KeyC") {
+    // Clear all bookmarks shortcut
+    if (matchesShortcut(e, shortcuts.clearBookmarks)) {
       bookmarks = [];
       chrome.storage.local.remove(storageKey, refreshMarkers);
+      return;
     }
 
-    if (e.code === "Slash" && shift) {
+    // Show help shortcut
+    if (matchesShortcut(e, shortcuts.showHelp)) {
       alert("Shortcuts:\nP - Add bookmark\nL - Label bookmark\nShift+PageUp/Down - Navigate\nShift+R - Remove\nShift+C - Clear all\nShift+/ - Show help");
+      return;
     }
 
     // Manual speed override (Alt + 1-9)
@@ -286,10 +301,11 @@
       overrideTimeout = setTimeout(() => {
         manualOverride = false;
       }, 5000);
+      return;
     }
 
-    // Increase speed with + key
-    if (e.key === '+' || e.key === '=') {
+    // Increase speed shortcut
+    if (matchesShortcut(e, shortcuts.increaseSpeed) || e.key === '=') {
       let currentSpeed = parseFloat(video.playbackRate.toFixed(2));
       let newSpeed = Math.min(20, currentSpeed + 0.25);
       newSpeed = parseFloat(newSpeed.toFixed(2));
@@ -297,10 +313,11 @@
       showSpeedOverlay(newSpeed);
       chrome.storage.sync.set({ speed: newSpeed.toString() });
       console.log(`Speed increased to ${newSpeed}x`);
+      return;
     }
 
-    // Decrease speed with - key
-    if (e.key === '-' || e.key === '_') {
+    // Decrease speed shortcut
+    if (matchesShortcut(e, shortcuts.decreaseSpeed) || e.key === '_') {
       let currentSpeed = parseFloat(video.playbackRate.toFixed(2));
       let newSpeed = Math.max(0.25, currentSpeed - 0.25);
       newSpeed = parseFloat(newSpeed.toFixed(2));
@@ -308,6 +325,17 @@
       showSpeedOverlay(newSpeed);
       chrome.storage.sync.set({ speed: newSpeed.toString() });
       console.log(`Speed decreased to ${newSpeed}x`);
+      return;
+    }
+
+    // Toggle remaining time overlay shortcut
+    if (matchesShortcut(e, shortcuts.toggleTime)) {
+      const overlay = document.getElementById('yt-remaining-time');
+      if (overlay) {
+        overlay.style.display = overlay.style.display === 'none' ? 'block' : 'none';
+        console.log('⏳ Remaining time overlay toggled');
+      }
+      return;
     }
   };
 
@@ -503,16 +531,7 @@
     }
   }, 1000);
   
-  // ⌨️ Toggle Overlay with Alt + R
-  window.addEventListener('keydown', (e) => {
-    if (e.altKey && e.key.toLowerCase() === 'r') {
-      const overlay = document.getElementById('yt-remaining-time');
-      if (overlay) {
-        overlay.style.display = overlay.style.display === 'none' ? 'block' : 'none';
-        console.log('⏳ Remaining time overlay toggled');
-      }
-    }
-  });
+  // Note: Toggle Overlay with Alt + R is now handled in handleKeyPress with configurable shortcuts
   
   // Toggle bookmark organizer panel
   function toggleBookmarkPanel() {

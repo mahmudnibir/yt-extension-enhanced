@@ -111,7 +111,14 @@ document.addEventListener('DOMContentLoaded', () => {
   const defaultShortcuts = {
     addBookmark: 'P',
     prevBookmark: 'Shift+PageDown',
-    nextBookmark: 'Shift+PageUp'
+    nextBookmark: 'Shift+PageUp',
+    labelBookmark: 'L',
+    removeBookmark: 'Shift+R',
+    clearBookmarks: 'Shift+C',
+    increaseSpeed: '+',
+    decreaseSpeed: '-',
+    showHelp: 'Shift+?',
+    toggleTime: 'Alt+R'
   };
 
   // Load and apply custom shortcuts
