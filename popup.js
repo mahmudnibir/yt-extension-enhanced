@@ -107,6 +107,110 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  // Default shortcuts
+  const defaultShortcuts = {
+    addBookmark: 'P',
+    prevBookmark: 'Shift+PageDown',
+    nextBookmark: 'Shift+PageUp'
+  };
+
+  // Load and apply custom shortcuts
+  let customShortcuts = {};
+  chrome.storage.sync.get(['shortcuts'], (data) => {
+    customShortcuts = data.shortcuts || {};
+    updateShortcutDisplays();
+  });
+
+  function updateShortcutDisplays() {
+    document.querySelectorAll('.shortcut-input').forEach(input => {
+      const action = input.getAttribute('data-action');
+      input.textContent = customShortcuts[action] || defaultShortcuts[action];
+    });
+  }
+
+  // Shortcut recording
+  let recordingAction = null;
+  
+  document.querySelectorAll('.shortcut-input').forEach(input => {
+    input.addEventListener('click', (e) => {
+      if (recordingAction) return;
+      
+      recordingAction = e.target.getAttribute('data-action');
+      e.target.classList.add('recording');
+      e.target.textContent = 'Press keys...';
+    });
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (!recordingAction) return;
+    
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Cancel recording on ESC
+    if (e.key === 'Escape') {
+      const input = document.querySelector(`.shortcut-input[data-action="${recordingAction}"]`);
+      input.classList.remove('recording');
+      input.textContent = customShortcuts[recordingAction] || defaultShortcuts[recordingAction];
+      recordingAction = null;
+      return;
+    }
+    
+    // Build shortcut string
+    let shortcut = '';
+    if (e.ctrlKey) shortcut += 'Ctrl+';
+    if (e.altKey) shortcut += 'Alt+';
+    if (e.shiftKey) shortcut += 'Shift+';
+    
+    // Add the actual key
+    if (e.key.length === 1) {
+      shortcut += e.key.toUpperCase();
+    } else {
+      shortcut += e.key;
+    }
+    
+    // Save the shortcut
+    customShortcuts[recordingAction] = shortcut;
+    chrome.storage.sync.set({ shortcuts: customShortcuts }, () => {
+      const input = document.querySelector(`.shortcut-input[data-action="${recordingAction}"]`);
+      input.classList.remove('recording');
+      input.textContent = shortcut;
+      recordingAction = null;
+      
+      // Notify content script about shortcut change
+      chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
+        if (tabs[0] && tabs[0].url && tabs[0].url.includes('youtube.com')) {
+          chrome.tabs.sendMessage(tabs[0].id, {
+            action: 'updateShortcuts',
+            shortcuts: customShortcuts
+          });
+        }
+      });
+    });
+  });
+
+  // Reset shortcuts
+  document.querySelectorAll('.shortcut-reset').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const action = e.target.getAttribute('data-action');
+      delete customShortcuts[action];
+      
+      chrome.storage.sync.set({ shortcuts: customShortcuts }, () => {
+        updateShortcutDisplays();
+        
+        // Notify content script
+        chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
+          if (tabs[0] && tabs[0].url && tabs[0].url.includes('youtube.com')) {
+            chrome.tabs.sendMessage(tabs[0].id, {
+              action: 'updateShortcuts',
+              shortcuts: customShortcuts
+            });
+          }
+        });
+      });
+    });
+  });
+
   // Theme toggle functionality
   const themeToggle = document.getElementById('themeToggle');
   

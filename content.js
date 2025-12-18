@@ -11,6 +11,20 @@
   // Time saved tracking
   let totalTimeSaved = 0;
   let lastUpdateTime = 0;
+  
+  // Custom shortcuts with defaults
+  let shortcuts = {
+    addBookmark: 'P',
+    prevBookmark: 'Shift+PageDown',
+    nextBookmark: 'Shift+PageUp'
+  };
+  
+  // Load custom shortcuts
+  chrome.storage.sync.get(['shortcuts'], (data) => {
+    if (data.shortcuts) {
+      shortcuts = { ...shortcuts, ...data.shortcuts };
+    }
+  });
 
   const init = () => {
     video = document.querySelector("video");
@@ -168,15 +182,42 @@
       applyContentControls();
       sendResponse({success: true});
     }
+    if (request.action === 'updateShortcuts') {
+      console.log('Received updateShortcuts message', request.shortcuts);
+      shortcuts = { ...shortcuts, ...request.shortcuts };
+      sendResponse({success: true});
+    }
     return true;
   });
+
+  // Helper function to match key press with shortcut
+  function matchesShortcut(e, shortcut) {
+    const parts = shortcut.split('+');
+    const mainKey = parts[parts.length - 1];
+    const needsCtrl = parts.includes('Ctrl');
+    const needsAlt = parts.includes('Alt');
+    const needsShift = parts.includes('Shift');
+    
+    // Check modifiers
+    if (needsCtrl !== e.ctrlKey) return false;
+    if (needsAlt !== e.altKey) return false;
+    if (needsShift !== e.shiftKey) return false;
+    
+    // Check main key
+    if (mainKey.length === 1) {
+      return e.key.toUpperCase() === mainKey.toUpperCase();
+    } else {
+      return e.key === mainKey;
+    }
+  }
 
   const handleKeyPress = (e) => {
     if (!video || !storageKey) return;
     if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
     const shift = e.shiftKey;
 
-    if (e.code === "KeyP") {
+    // Add bookmark shortcut
+    if (matchesShortcut(e, shortcuts.addBookmark)) {
       const time = Math.floor(video.currentTime);
       if (!bookmarks.some(bm => bm.time === time)) {
         const newBookmark = { time, label: "" };
@@ -187,6 +228,23 @@
           currentIndex = bookmarks.findIndex(b => b.time === time);
         });
       }
+      return;
+    }
+
+    // Next bookmark shortcut
+    if (matchesShortcut(e, shortcuts.nextBookmark)) {
+      if (bookmarks.length === 0) return;
+      currentIndex = Math.min(currentIndex + 1, bookmarks.length - 1);
+      video.currentTime = bookmarks[currentIndex].time;
+      return;
+    }
+
+    // Previous bookmark shortcut
+    if (matchesShortcut(e, shortcuts.prevBookmark)) {
+      if (bookmarks.length === 0) return;
+      currentIndex = Math.max(currentIndex - 1, 0);
+      video.currentTime = bookmarks[currentIndex].time;
+      return;
     }
 
     if (e.code === "KeyL") {
@@ -198,18 +256,6 @@
         existing.label = label;
         chrome.storage.local.set({ [storageKey]: bookmarks }, refreshMarkers);
       }
-    }
-
-    if (shift && e.code === "PageUp") {
-      if (bookmarks.length === 0) return;
-      currentIndex = Math.min(currentIndex + 1, bookmarks.length - 1);
-      video.currentTime = bookmarks[currentIndex].time;
-    }
-
-    if (shift && e.code === "PageDown") {
-      if (bookmarks.length === 0) return;
-      currentIndex = Math.max(currentIndex - 1, 0);
-      video.currentTime = bookmarks[currentIndex].time;
     }
 
     if (shift && e.code === "KeyR") {
