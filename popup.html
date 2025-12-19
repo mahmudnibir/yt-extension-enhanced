@@ -396,7 +396,7 @@
     }
     
     .shortcut-input {
-      padding: 8px 16px;
+      padding: 8px 12px;
       background: linear-gradient(135deg, var(--bg-card), var(--bg-tertiary));
       color: var(--text-primary);
       border: 1.5px solid var(--border-color);
@@ -405,7 +405,8 @@
       font-weight: 700;
       font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Courier New', monospace;
       cursor: pointer;
-      min-width: 100px;
+      min-width: 80px;
+      max-width: 130px;
       text-align: center;
       transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       user-select: none;
@@ -413,6 +414,10 @@
       overflow: hidden;
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
       letter-spacing: 0.5px;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      overflow: hidden;
+      flex-shrink: 1;
     }
     
     .shortcut-input::before {
@@ -464,10 +469,12 @@
       display: flex;
       gap: 8px;
       align-items: center;
+      flex-wrap: nowrap;
+      min-width: 0;
     }
     
     .shortcut-reset {
-      padding: 6px 12px;
+      padding: 6px 10px;
       background: transparent;
       border: 1.5px solid var(--border-color);
       border-radius: 6px;
@@ -478,6 +485,8 @@
       transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       position: relative;
       overflow: hidden;
+      flex-shrink: 0;
+      max-width: 60px;
     }
     
     .shortcut-reset::before {

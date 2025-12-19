@@ -6,6 +6,12 @@
 			"type": "shell",
 			"command": "start chrome \"file:///%CD%/popup.html\"",
 			"group": "test"
+		},
+		{
+			"label": "Reload web app for layout verification",
+			"type": "shell",
+			"command": "start chrome \"file:///%CD%/popup.html\"",
+			"group": "test"
 		}
 	]
 }
