@@ -1,0 +1,11 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Run web app for UX verification",
+			"type": "shell",
+			"command": "start chrome \"file:///%CD%/popup.html\"",
+			"group": "test"
+		}
+	]
+}

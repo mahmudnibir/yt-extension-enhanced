@@ -209,23 +209,41 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Shortcut recording
   let recordingAction = null;
-  
+  let pressedModifiers = { ctrl: false, alt: false, shift: false, tab: false };
+  let liveShortcut = '';
+
+  function getModifierString(e) {
+    let mods = [];
+    if (e.ctrlKey) mods.push('Ctrl');
+    if (e.altKey) mods.push('Alt');
+    if (e.shiftKey) mods.push('Shift');
+    if (e.key === 'Tab' || pressedModifiers.tab) mods.push('Tab');
+    return mods.join('+');
+  }
+
+  function isModifierKey(key) {
+    return (
+      key === 'Control' || key === 'Shift' || key === 'Alt' || key === 'Tab' ||
+      key === 'Meta'
+    );
+  }
+
   document.querySelectorAll('.shortcut-input').forEach(input => {
     input.addEventListener('click', (e) => {
       if (recordingAction) return;
-      
       recordingAction = e.target.getAttribute('data-action');
       e.target.classList.add('recording');
       e.target.textContent = 'Press keys...';
+      pressedModifiers = { ctrl: false, alt: false, shift: false, tab: false };
+      liveShortcut = '';
     });
   });
 
   document.addEventListener('keydown', (e) => {
     if (!recordingAction) return;
-    
     e.preventDefault();
     e.stopPropagation();
-    
+
     // Cancel recording on ESC
     if (e.key === 'Escape') {
       const input = document.querySelector(`.shortcut-input[data-action="${recordingAction}"]`);
@@ -234,20 +252,29 @@ document.addEventListener('DOMContentLoaded', () => {
       recordingAction = null;
       return;
     }
-    
-    // Build shortcut string
-    let shortcut = '';
-    if (e.ctrlKey) shortcut += 'Ctrl+';
-    if (e.altKey) shortcut += 'Alt+';
-    if (e.shiftKey) shortcut += 'Shift+';
-    
-    // Add the actual key
+
+    // Track modifier keys
+    if (e.key === 'Control') pressedModifiers.ctrl = true;
+    if (e.key === 'Alt') pressedModifiers.alt = true;
+    if (e.key === 'Shift') pressedModifiers.shift = true;
+    if (e.key === 'Tab') pressedModifiers.tab = true;
+
+    // If only modifier keys are pressed, update display and wait
+    if (isModifierKey(e.key)) {
+      const input = document.querySelector(`.shortcut-input[data-action="${recordingAction}"]`);
+      input.textContent = getModifierString(e) || 'Press keys...';
+      return;
+    }
+
+    // Only allow one non-modifier key
+    let shortcut = getModifierString(e);
+    if (shortcut) shortcut += '+';
     if (e.key.length === 1) {
       shortcut += e.key.toUpperCase();
     } else {
       shortcut += e.key;
     }
-    
+
     // Save the shortcut
     customShortcuts[recordingAction] = shortcut;
     chrome.storage.sync.set({ shortcuts: customShortcuts }, () => {
@@ -255,7 +282,8 @@ document.addEventListener('DOMContentLoaded', () => {
       input.classList.remove('recording');
       input.textContent = shortcut;
       recordingAction = null;
-      
+      pressedModifiers = { ctrl: false, alt: false, shift: false, tab: false };
+      liveShortcut = '';
       // Notify content script about shortcut change
       chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
         if (tabs[0] && tabs[0].url && tabs[0].url.includes('youtube.com')) {
@@ -266,6 +294,15 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       });
     });
+  });
+
+  document.addEventListener('keyup', (e) => {
+    if (!recordingAction) return;
+    // Reset modifier state on keyup
+    if (e.key === 'Control') pressedModifiers.ctrl = false;
+    if (e.key === 'Alt') pressedModifiers.alt = false;
+    if (e.key === 'Shift') pressedModifiers.shift = false;
+    if (e.key === 'Tab') pressedModifiers.tab = false;
   });
 
   // Reset shortcuts
