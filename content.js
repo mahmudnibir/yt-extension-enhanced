@@ -110,35 +110,36 @@
   
   // Function to hide/show content based on settings
   function applyContentControls() {
-    chrome.storage.sync.get(['hideComments', 'hideShorts', 'hideDescription', 'hideSuggestions'], (data) => {
+    chrome.storage.sync.get(['hideComments', 'hideShorts', 'hideDescription', 'hideSuggestions', 'loopVideo'], (data) => {
       console.log('Applying content controls:', data);
-      
       // Hide comments
       if (data.hideComments) {
         hideComments();
       } else {
         showComments();
       }
-      
       // Hide shorts
       if (data.hideShorts) {
         hideShorts();
       } else {
         showShorts();
       }
-      
       // Hide description
       if (data.hideDescription) {
         hideDescription();
       } else {
         showDescription();
       }
-      
       // Hide suggestions
       if (data.hideSuggestions) {
         hideSuggestions();
       } else {
         showSuggestions();
+      }
+      // Loop video
+      const video = document.querySelector('video');
+      if (video) {
+        video.loop = !!data.loopVideo;
       }
     });
   }
@@ -263,6 +264,11 @@
   chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === 'updateSettings') {
       console.log('Received updateSettings message');
+      // If loopVideo is present in settings, apply immediately
+      if (request.settings && typeof request.settings.loopVideo !== 'undefined') {
+        const video = document.querySelector('video');
+        if (video) video.loop = !!request.settings.loopVideo;
+      }
       applyContentControls();
       if (typeof request.speed !== 'undefined') {
         const video = document.querySelector('video');

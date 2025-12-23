@@ -9,6 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const rememberSpeedCheckbox = document.getElementById('rememberSpeed');
   const cloudSyncCheckbox = document.getElementById('cloudSync');
   const cloudSyncDesc = document.getElementById('cloudSyncDesc');
+  const loopVideoCheckbox = document.getElementById('loopVideo');
 
   // Default values
   const defaults = { 
@@ -19,7 +20,8 @@ document.addEventListener('DOMContentLoaded', () => {
     hideDescription: false,
     hideSuggestions: false,
     rememberSpeed: false,
-    cloudSync: true
+    cloudSync: true,
+    loopVideo: false
   };
 
   // Update speed display with enhanced formatting
@@ -38,6 +40,7 @@ document.addEventListener('DOMContentLoaded', () => {
     hideSuggestionsCheckbox.checked = data.hideSuggestions || false;
     rememberSpeedCheckbox.checked = data.rememberSpeed || false;
     cloudSyncCheckbox.checked = data.cloudSync !== false;
+    loopVideoCheckbox.checked = data.loopVideo || false;
     updateCloudSyncDesc(data.cloudSync !== false);
     updateSpeedDisplay(data.speed);
     
@@ -59,6 +62,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const hideSuggestions = !!hideSuggestionsCheckbox.checked;
     const rememberSpeed = !!rememberSpeedCheckbox.checked;
     const cloudSync = !!cloudSyncCheckbox.checked;
+    const loopVideo = !!loopVideoCheckbox.checked;
     
     chrome.storage.sync.set({
       speed: speed.toString(),
@@ -68,7 +72,8 @@ document.addEventListener('DOMContentLoaded', () => {
       hideDescription,
       hideSuggestions,
       rememberSpeed,
-      cloudSync
+      cloudSync,
+      loopVideo
     }, () => {
       // Notify content script to apply changes and update speed immediately
       chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
@@ -76,7 +81,7 @@ document.addEventListener('DOMContentLoaded', () => {
           chrome.tabs.sendMessage(tabs[0].id, {
             action: 'updateSettings',
             speed: speed,
-            settings: { hideComments, hideShorts, hideDescription, hideSuggestions }
+            settings: { hideComments, hideShorts, hideDescription, hideSuggestions, loopVideo }
           }, (response) => {
             if (chrome.runtime.lastError) {
               console.log('Message sending error:', chrome.runtime.lastError.message);
@@ -106,6 +111,7 @@ document.addEventListener('DOMContentLoaded', () => {
   hideShortsCheckbox.addEventListener('change', autoSave);
   hideSuggestionsCheckbox.addEventListener('change', autoSave);
   hideDescriptionCheckbox.addEventListener('change', autoSave);
+  loopVideoCheckbox.addEventListener('change', autoSave);
   
   // Cloud sync toggle with migration
   cloudSyncCheckbox.addEventListener('change', async () => {
