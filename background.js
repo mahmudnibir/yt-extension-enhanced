@@ -59,7 +59,13 @@ chrome.tabs.onActivated.addListener((info) => {
 });
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-  if (tabId === activeTabId && changeInfo.url) {
+  if (tabId !== activeTabId || !changeInfo.url) return;
+  const newDomain = getDomain(changeInfo.url);
+  if (newDomain === activeTabDomain) {
+    // Same platform — just update the URL so chat detection stays current, don't reset the clock
+    activeTabUrl = changeInfo.url;
+  } else {
+    // Domain actually changed — flush + restart
     switchActive(tabId, changeInfo.url);
   }
 });
