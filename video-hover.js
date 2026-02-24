@@ -126,13 +126,13 @@
         display: inline-flex;
         align-items: center;
         gap: 4px;
-        padding: 4px 6px;
-        background: rgba(33,33,33,0.55);
-        backdrop-filter: blur(10px);
-        -webkit-backdrop-filter: blur(10px);
-        border: 1px solid rgba(255,255,255,0.07);
-        border-radius: 8px;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+        padding: 3px 7px;
+        background: rgba(0,0,0,0.6);
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+        border: none;
+        border-radius: 6px;
+        box-shadow: none;
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
         pointer-events: all;
         transition: opacity 0.08s ease, transform 0.08s ease;
@@ -147,30 +147,32 @@
       .vh-btn {
         background: none;
         border: none;
-        color: rgba(255,255,255,0.72);
-        width: 20px;
-        height: 20px;
+        color: #fff;
+        width: 18px;
+        height: 18px;
         border-radius: 50%;
         cursor: pointer;
-        font-size: 16px;
+        font-size: 15px;
         line-height: 1;
         display: flex;
         align-items: center;
         justify-content: center;
-        transition: color 0.1s, transform 0.08s;
+        transition: opacity 0.1s, transform 0.08s;
         padding: 0;
         flex-shrink: 0;
+        opacity: 0.9;
       }
-      .vh-btn:hover { color: rgba(255,255,255,0.95); }
+      .vh-btn:hover { opacity: 1; }
       .vh-btn:active { transform: scale(0.82); }
       .vh-label {
         color: #fff;
         font-size: 11px;
-        font-weight: 700;
-        min-width: 28px;
+        font-weight: 600;
+        min-width: 24px;
         text-align: center;
-        letter-spacing: 0.02em;
+        letter-spacing: 0.01em;
         cursor: default;
+        opacity: 0.9;
       }
     `;
     document.head.appendChild(style);
