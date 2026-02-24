@@ -893,9 +893,92 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // Platform stats tab switching with PIN gate for Instagram/Facebook
+  // Platform stats tab switching
+  function switchToPlatform(platform) {
+    document.querySelectorAll('.platform-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.platform-panel').forEach(p => p.classList.remove('active'));
+    const tab = document.querySelector(`.platform-tab[data-platform="${platform}"]`);
+    if (tab) tab.classList.add('active');
+    const panel = document.getElementById(`panel-${platform}`);
+    if (panel) panel.classList.add('active');
+  }
+
+  document.querySelectorAll('.platform-tab').forEach(tab => {
+    tab.addEventListener('click', () => switchToPlatform(tab.dataset.platform));
+  });
+
+  // ─── Social stats (Instagram / Facebook) ────────────────────────────────
+  function loadSocialStats() {
+    const today = new Date().toDateString();
+    const weekAgo = new Date();
+    weekAgo.setDate(weekAgo.getDate() - 7);
+
+    function sumWeek(dailyData) {
+      let videos = 0, time = 0;
+      Object.keys(dailyData).forEach(dateStr => {
+        if (new Date(dateStr) >= weekAgo) {
+          videos += dailyData[dateStr].videosWatched || 0;
+          time   += dailyData[dateStr].activeTime    || 0;
+        }
+      });
+      return { videos, time };
+    }
+
+    function sumAll(dailyData) {
+      let videos = 0, time = 0;
+      Object.keys(dailyData).forEach(dateStr => {
+        videos += dailyData[dateStr].videosWatched || 0;
+        time   += dailyData[dateStr].activeTime    || 0;
+      });
+      return { videos, time };
+    }
+
+    // Instagram
+    chrome.storage.local.get(['igStats'], (data) => {
+      const daily = (data.igStats || {}).dailyData || {};
+      const todayD = daily[today] || {};
+      const week   = sumWeek(daily);
+      const all    = sumAll(daily);
+
+      const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+      set('ig-total-reels',  all.videos);
+      set('ig-total-time',   formatTime(all.time));
+      set('ig-today-reels',  todayD.videosWatched || 0);
+      set('ig-today-time',   formatTimeShort(todayD.activeTime || 0));
+      set('ig-day-reels',    todayD.videosWatched || 0);
+      set('ig-day-time',     formatTimeShort(todayD.activeTime || 0));
+      set('ig-week-reels',   week.videos);
+      set('ig-week-time',    formatTimeShort(week.time));
+      const igDate = document.getElementById('ig-today-date');
+      if (igDate) igDate.textContent = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    });
+
+    // Facebook
+    chrome.storage.local.get(['fbStats'], (data) => {
+      const daily = (data.fbStats || {}).dailyData || {};
+      const todayD = daily[today] || {};
+      const week   = sumWeek(daily);
+      const all    = sumAll(daily);
+
+      const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+      set('fb-total-videos', all.videos);
+      set('fb-total-time',   formatTime(all.time));
+      set('fb-today-videos', todayD.videosWatched || 0);
+      set('fb-today-time',   formatTimeShort(todayD.activeTime || 0));
+      set('fb-day-videos',   todayD.videosWatched || 0);
+      set('fb-day-time',     formatTimeShort(todayD.activeTime || 0));
+      set('fb-week-videos',  week.videos);
+      set('fb-week-time',    formatTimeShort(week.time));
+      const fbDate = document.getElementById('fb-today-date');
+      if (fbDate) fbDate.textContent = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    });
+  }
+
   // Load statistics on page load
   loadStatistics();
+  loadSocialStats();
   
   // Refresh statistics every 30 seconds
-  setInterval(loadStatistics, 30000);
+  setInterval(() => { loadStatistics(); loadSocialStats(); }, 30000);
 });

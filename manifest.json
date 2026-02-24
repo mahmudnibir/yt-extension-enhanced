@@ -5,7 +5,7 @@
   "description": "Advanced YouTube player with cloud-synced bookmarks, custom speed control, ad skipping, content filters, watch statistics, and full keyboard customization for power users.",
   "author": "Mahmud Nibir",
   "homepage_url": "https://github.com/mahmudnibir/yt-extension-enhanced",
-  "permissions": ["storage", "activeTab", "scripting"],
+  "permissions": ["storage", "activeTab", "scripting", "tabs"],
   "host_permissions": ["*://www.youtube.com/*", "<all_urls>"],
   "content_scripts": [
     {

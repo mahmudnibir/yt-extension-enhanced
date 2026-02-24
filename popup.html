@@ -84,23 +84,26 @@
     .tabs {
       display: flex;
       background: var(--bg-secondary);
-      padding: 0 16px;
+      padding: 0;
       gap: 0;
       border-bottom: 1px solid var(--border-color);
     }
     
     .tab {
-      padding: 14px 20px;
+      flex: 1;
+      padding: 14px 8px;
+      text-align: center;
       background: transparent;
       border: none;
       color: var(--text-secondary);
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 600;
       cursor: pointer;
       transition: all 0.2s ease;
       position: relative;
       letter-spacing: 0.2px;
       border-bottom: 2px solid transparent;
+      white-space: nowrap;
     }
     
     .tab::after {
@@ -746,7 +749,104 @@
       gap: 8px;
       margin-top: 8px;
     }
-    
+
+    /* Platform Stats Tabs */
+    .platform-tabs {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 14px;
+    }
+    .platform-tab {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+      padding: 10px 6px 8px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.18s;
+      position: relative;
+      color: var(--text-secondary);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+    }
+    .platform-tab svg { opacity: 0.55; transition: opacity 0.18s; }
+    .platform-tab:hover { border-color: var(--border-color-hover); color: var(--text-primary); }
+    .platform-tab:hover svg { opacity: 0.85; }
+    .platform-tab.active {
+      border-color: var(--accent-color);
+      background: var(--icon-bg);
+      color: var(--text-primary);
+    }
+    .platform-tab.active svg { opacity: 1; }
+    .pro-badge {
+      position: absolute;
+      top: 5px;
+      right: 5px;
+      font-size: 7px;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      background: var(--accent-color);
+      color: #fff;
+      padding: 1px 4px;
+      border-radius: 3px;
+      line-height: 1.4;
+    }
+    .platform-panel { display: none; }
+    .platform-panel.active { display: block; }
+
+    /* Premium lock overlay */
+    .premium-lock-wrap {
+      position: relative;
+    }
+    .premium-lock-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,0.55);
+      backdrop-filter: blur(3px);
+      -webkit-backdrop-filter: blur(3px);
+      border-radius: 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      z-index: 10;
+    }
+    .lock-icon { opacity: 0.9; }
+    .premium-lock-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: 0.03em;
+    }
+    .premium-lock-sub {
+      font-size: 10px;
+      color: rgba(255,255,255,0.6);
+      text-align: center;
+      max-width: 160px;
+      line-height: 1.4;
+    }
+    .premium-stat-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 12px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .premium-stats-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
     /* Modal Overlay */
     .modal-overlay {
       position: fixed;
@@ -1031,6 +1131,7 @@
     <div class="tabs">
       <button class="tab active" data-tab="general">General</button>
       <button class="tab" data-tab="shortcuts">Shortcuts</button>
+      <button class="tab" data-tab="stats">Stats</button>
       <button class="tab" data-tab="advanced">Advanced</button>
     </div>
     
@@ -1454,135 +1555,341 @@
       </section>
       </div>
       
-      <!-- Advanced Tab -->
-      <div class="tab-content" id="advanced">
-      
-      <!-- Watch Statistics -->
+      <!-- Stats Tab -->
+      <div class="tab-content" id="stats">
+
+      <!-- Platform Statistics -->
       <section>
-        <h2>Watch Statistics</h2>
-        <div class="stats-grid">
-          <div class="stat-card">
-            <div class="stat-icon">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polygon points="23 7 16 12 23 17 23 7"></polygon>
-                <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
-              </svg>
-            </div>
-            <div class="stat-content">
-              <div class="stat-value" id="totalVideos">0</div>
-              <div class="stat-label">Videos Watched</div>
-            </div>
-          </div>
-          
-          <div class="stat-card">
-            <div class="stat-icon">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="10"></circle>
-                <polyline points="12 6 12 12 16 14"></polyline>
-              </svg>
-            </div>
-            <div class="stat-content">
-              <div class="stat-value" id="totalWatchTime">0h 0m</div>
-              <div class="stat-label">Total Watch Time</div>
-            </div>
-          </div>
-          
-          <div class="stat-card">
-            <div class="stat-icon">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
-                <polyline points="17 6 23 6 23 12"></polyline>
-              </svg>
-            </div>
-            <div class="stat-content">
-              <div class="stat-value" id="avgSpeed">1.0×</div>
-              <div class="stat-label">Average Speed</div>
-            </div>
-          </div>
-          
-          <div class="stat-card">
-            <div class="stat-icon">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                <polyline points="22 4 12 14.01 9 11.01"></polyline>
-              </svg>
-            </div>
-            <div class="stat-content">
-              <div class="stat-value" id="timeSaved">0h 0m</div>
-              <div class="stat-label">Time Saved</div>
-            </div>
-          </div>
-        </div>
-      </section>
-      
-      <!-- Productivity Dashboard -->
-      <section>
-        <h2>Productivity Dashboard</h2>
-        <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 12px;">
-          <label for="prodRange" class="prod-range-label">Range:</label>
-          <select id="prodRange" class="prod-range-select">
-            <option value="1d">Last 24 hours</option>
-            <option value="3d">Last 3 days</option>
-            <option value="7d" selected>Last 7 days</option>
-            <option value="1m">Last 1 month</option>
-          </select>
-        </div>
-        <div style="width: 100%; max-width: 100%; background: none; margin-bottom: 18px;">
-          <canvas id="prodStatsGraph" height="120" style="width: 100%; background: none;"></canvas>
-        </div>
-        <div class="dashboard-card">
-          <div class="dashboard-header">
-            <div class="dashboard-title">Today's Activity</div>
-            <div class="dashboard-date" id="todayDate"></div>
-          </div>
-          <div class="dashboard-stats">
-            <div class="dashboard-stat">
-              <div class="dashboard-stat-label">Videos</div>
-              <div class="dashboard-stat-value" id="todayVideos">0</div>
-            </div>
-            <div class="dashboard-stat">
-              <div class="dashboard-stat-label">Watch Time</div>
-              <div class="dashboard-stat-value" id="todayTime">0m</div>
-            </div>
-            <div class="dashboard-stat">
-              <div class="dashboard-stat-label">Avg Speed</div>
-              <div class="dashboard-stat-value" id="todaySpeed">1.0×</div>
-            </div>
-          </div>
-        </div>
-        
-        <div class="dashboard-card">
-          <div class="dashboard-header">
-            <div class="dashboard-title">This Week</div>
-          </div>
-          <div class="dashboard-stats">
-            <div class="dashboard-stat">
-              <div class="dashboard-stat-label">Videos</div>
-              <div class="dashboard-stat-value" id="weekVideos">0</div>
-            </div>
-            <div class="dashboard-stat">
-              <div class="dashboard-stat-label">Watch Time</div>
-              <div class="dashboard-stat-value" id="weekTime">0h</div>
-            </div>
-            <div class="dashboard-stat">
-              <div class="dashboard-stat-label">Time Saved</div>
-              <div class="dashboard-stat-value" id="weekSaved">0m</div>
-            </div>
-          </div>
-        </div>
-        
-        <div class="dashboard-actions">
-          <button class="btn-export" id="refreshStats">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="23 4 23 10 17 10"></polyline>
-              <polyline points="1 20 1 14 7 14"></polyline>
-              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+        <h2>Platform Statistics</h2>
+
+        <!-- Platform selector -->
+        <div class="platform-tabs">
+          <!-- YouTube -->
+          <button class="platform-tab active" data-platform="youtube">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M22.54 6.42a2.78 2.78 0 0 0-1.95-1.96C18.88 4 12 4 12 4s-6.88 0-8.59.46A2.78 2.78 0 0 0 1.46 6.42 29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58 2.78 2.78 0 0 0 1.95 1.96C5.12 20 12 20 12 20s6.88 0 8.59-.46a2.78 2.78 0 0 0 1.95-1.96A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58z"></path>
+              <polygon points="9.75 15.02 15.5 12 9.75 8.98 9.75 15.02" fill="currentColor" stroke="none"></polygon>
             </svg>
-            Refresh Stats
+            <span>YouTube</span>
+          </button>
+          <!-- Instagram -->
+          <button class="platform-tab" data-platform="instagram">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+              <circle cx="12" cy="12" r="4"></circle>
+              <circle cx="17.5" cy="6.5" r="0.5" fill="currentColor" stroke="none"></circle>
+            </svg>
+            <span>Instagram</span>
+          </button>
+          <!-- Facebook -->
+          <button class="platform-tab" data-platform="facebook">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path>
+            </svg>
+            <span>Facebook</span>
           </button>
         </div>
+
+        <!-- ── YouTube Panel ── -->
+        <div class="platform-panel active" id="panel-youtube">
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polygon points="23 7 16 12 23 17 23 7"></polygon>
+                  <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
+                </svg>
+              </div>
+              <div class="stat-content">
+                <div class="stat-value" id="totalVideos">0</div>
+                <div class="stat-label">Videos Watched</div>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+              </div>
+              <div class="stat-content">
+                <div class="stat-value" id="totalWatchTime">0h 0m</div>
+                <div class="stat-label">Total Watch Time</div>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
+                  <polyline points="17 6 23 6 23 12"></polyline>
+                </svg>
+              </div>
+              <div class="stat-content">
+                <div class="stat-value" id="avgSpeed">1.0×</div>
+                <div class="stat-label">Average Speed</div>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                  <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                </svg>
+              </div>
+              <div class="stat-content">
+                <div class="stat-value" id="timeSaved">0h 0m</div>
+                <div class="stat-label">Time Saved</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Productivity Dashboard (YouTube) -->
+          <div style="margin-top: 14px;">
+            <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 12px;">
+              <label for="prodRange" class="prod-range-label">Range:</label>
+              <select id="prodRange" class="prod-range-select">
+                <option value="1d">Last 24 hours</option>
+                <option value="3d">Last 3 days</option>
+                <option value="7d" selected>Last 7 days</option>
+                <option value="1m">Last 1 month</option>
+              </select>
+            </div>
+            <div style="width: 100%; max-width: 100%; background: none; margin-bottom: 18px;">
+              <canvas id="prodStatsGraph" height="120" style="width: 100%; background: none;"></canvas>
+            </div>
+            <div class="dashboard-card">
+              <div class="dashboard-header">
+                <div class="dashboard-title">Today's Activity</div>
+                <div class="dashboard-date" id="todayDate"></div>
+              </div>
+              <div class="dashboard-stats">
+                <div class="dashboard-stat">
+                  <div class="dashboard-stat-label">Videos</div>
+                  <div class="dashboard-stat-value" id="todayVideos">0</div>
+                </div>
+                <div class="dashboard-stat">
+                  <div class="dashboard-stat-label">Watch Time</div>
+                  <div class="dashboard-stat-value" id="todayTime">0m</div>
+                </div>
+                <div class="dashboard-stat">
+                  <div class="dashboard-stat-label">Avg Speed</div>
+                  <div class="dashboard-stat-value" id="todaySpeed">1.0×</div>
+                </div>
+              </div>
+            </div>
+            <div class="dashboard-card">
+              <div class="dashboard-header">
+                <div class="dashboard-title">This Week</div>
+              </div>
+              <div class="dashboard-stats">
+                <div class="dashboard-stat">
+                  <div class="dashboard-stat-label">Videos</div>
+                  <div class="dashboard-stat-value" id="weekVideos">0</div>
+                </div>
+                <div class="dashboard-stat">
+                  <div class="dashboard-stat-label">Watch Time</div>
+                  <div class="dashboard-stat-value" id="weekTime">0h</div>
+                </div>
+                <div class="dashboard-stat">
+                  <div class="dashboard-stat-label">Time Saved</div>
+                  <div class="dashboard-stat-value" id="weekSaved">0m</div>
+                </div>
+              </div>
+            </div>
+            <div class="dashboard-actions">
+              <button class="btn-export" id="refreshStats">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="23 4 23 10 17 10"></polyline>
+                  <polyline points="1 20 1 14 7 14"></polyline>
+                  <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                </svg>
+                Refresh Stats
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Instagram Panel ── -->
+        <div class="platform-panel" id="panel-instagram">
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polygon points="23 7 16 12 23 17 23 7"></polygon>
+                  <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
+                </svg>
+              </div>
+              <div class="stat-content">
+                <div class="stat-value" id="ig-total-reels">0</div>
+                <div class="stat-label">Total Reels</div>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+              </div>
+              <div class="stat-content">
+                <div class="stat-value" id="ig-total-time">0h 0m</div>
+                <div class="stat-label">Total Time</div>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+                  <circle cx="12" cy="12" r="4"></circle>
+                  <circle cx="17.5" cy="6.5" r="0.5" fill="currentColor" stroke="none"></circle>
+                </svg>
+              </div>
+              <div class="stat-content">
+                <div class="stat-value" id="ig-today-reels">0</div>
+                <div class="stat-label">Reels Today</div>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
+                  <polyline points="17 6 23 6 23 12"></polyline>
+                </svg>
+              </div>
+              <div class="stat-content">
+                <div class="stat-value" id="ig-today-time">0m</div>
+                <div class="stat-label">Time Today</div>
+              </div>
+            </div>
+          </div>
+          <div style="margin-top:14px;">
+            <div class="dashboard-card">
+              <div class="dashboard-header">
+                <div class="dashboard-title">Today's Activity</div>
+                <div class="dashboard-date" id="ig-today-date"></div>
+              </div>
+              <div class="dashboard-stats">
+                <div class="dashboard-stat">
+                  <div class="dashboard-stat-label">Reels</div>
+                  <div class="dashboard-stat-value" id="ig-day-reels">0</div>
+                </div>
+                <div class="dashboard-stat">
+                  <div class="dashboard-stat-label">Time on Site</div>
+                  <div class="dashboard-stat-value" id="ig-day-time">0m</div>
+                </div>
+              </div>
+            </div>
+            <div class="dashboard-card">
+              <div class="dashboard-header">
+                <div class="dashboard-title">This Week</div>
+              </div>
+              <div class="dashboard-stats">
+                <div class="dashboard-stat">
+                  <div class="dashboard-stat-label">Reels</div>
+                  <div class="dashboard-stat-value" id="ig-week-reels">0</div>
+                </div>
+                <div class="dashboard-stat">
+                  <div class="dashboard-stat-label">Time on Site</div>
+                  <div class="dashboard-stat-value" id="ig-week-time">0h</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Facebook Panel ── -->
+        <div class="platform-panel" id="panel-facebook">
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polygon points="23 7 16 12 23 17 23 7"></polygon>
+                  <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
+                </svg>
+              </div>
+              <div class="stat-content">
+                <div class="stat-value" id="fb-total-videos">0</div>
+                <div class="stat-label">Total Videos</div>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+              </div>
+              <div class="stat-content">
+                <div class="stat-value" id="fb-total-time">0h 0m</div>
+                <div class="stat-label">Total Time</div>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path>
+                </svg>
+              </div>
+              <div class="stat-content">
+                <div class="stat-value" id="fb-today-videos">0</div>
+                <div class="stat-label">Videos Today</div>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
+                  <polyline points="17 6 23 6 23 12"></polyline>
+                </svg>
+              </div>
+              <div class="stat-content">
+                <div class="stat-value" id="fb-today-time">0m</div>
+                <div class="stat-label">Time Today</div>
+              </div>
+            </div>
+          </div>
+          <div style="margin-top:14px;">
+            <div class="dashboard-card">
+              <div class="dashboard-header">
+                <div class="dashboard-title">Today's Activity</div>
+                <div class="dashboard-date" id="fb-today-date"></div>
+              </div>
+              <div class="dashboard-stats">
+                <div class="dashboard-stat">
+                  <div class="dashboard-stat-label">Videos</div>
+                  <div class="dashboard-stat-value" id="fb-day-videos">0</div>
+                </div>
+                <div class="dashboard-stat">
+                  <div class="dashboard-stat-label">Time on Site</div>
+                  <div class="dashboard-stat-value" id="fb-day-time">0m</div>
+                </div>
+              </div>
+            </div>
+            <div class="dashboard-card">
+              <div class="dashboard-header">
+                <div class="dashboard-title">This Week</div>
+              </div>
+              <div class="dashboard-stats">
+                <div class="dashboard-stat">
+                  <div class="dashboard-stat-label">Videos</div>
+                  <div class="dashboard-stat-value" id="fb-week-videos">0</div>
+                </div>
+                <div class="dashboard-stat">
+                  <div class="dashboard-stat-label">Time on Site</div>
+                  <div class="dashboard-stat-value" id="fb-week-time">0h</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
       </section>
-      
+
+      </div>
+
+      <!-- Advanced Tab -->
+      <div class="tab-content" id="advanced">
+
       <!-- Bookmarks -->
       <section>
         <h2>Bookmarks</h2>

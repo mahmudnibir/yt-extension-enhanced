@@ -1,4 +1,67 @@
 // background.js
+
+// ─── Site-time tracking for Instagram & Facebook ─────────────────────────────
+let activeTabId = null;
+let activeTabDomain = null;
+let lastActiveTime = null;
+
+function getDomain(url) {
+  try {
+    const h = new URL(url).hostname;
+    if (h.includes('instagram.com')) return 'ig';
+    if (h.includes('facebook.com') || h.includes('fb.com')) return 'fb';
+    return null;
+  } catch (_) { return null; }
+}
+
+function recordTime(domain) {
+  if (!domain || !lastActiveTime) return;
+  const elapsed = Math.round((Date.now() - lastActiveTime) / 1000);
+  if (elapsed <= 0 || elapsed > 7200) { lastActiveTime = null; return; }
+  const today = new Date().toDateString();
+  const key = `${domain}Stats`;
+  chrome.storage.local.get([key], (data) => {
+    const stats = data[key] || { dailyData: {} };
+    const day = stats.dailyData[today] || { activeTime: 0, videosWatched: 0 };
+    day.activeTime = (day.activeTime || 0) + elapsed;
+    stats.dailyData[today] = day;
+    chrome.storage.local.set({ [key]: stats });
+  });
+  lastActiveTime = Date.now();
+}
+
+function switchActive(tabId, url) {
+  recordTime(activeTabDomain);
+  activeTabId = tabId;
+  activeTabDomain = getDomain(url);
+  lastActiveTime = activeTabDomain ? Date.now() : null;
+}
+
+chrome.tabs.onActivated.addListener((info) => {
+  chrome.tabs.get(info.tabId, (tab) => {
+    if (chrome.runtime.lastError) return;
+    switchActive(info.tabId, tab.url || '');
+  });
+});
+
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (tabId === activeTabId && changeInfo.url) {
+    switchActive(tabId, changeInfo.url);
+  }
+});
+
+chrome.windows.onFocusChanged.addListener((windowId) => {
+  if (windowId === chrome.windows.WINDOW_ID_NONE) {
+    recordTime(activeTabDomain);
+    lastActiveTime = null;
+  } else {
+    chrome.tabs.query({ active: true, windowId }, (tabs) => {
+      if (tabs && tabs[0]) switchActive(tabs[0].id, tabs[0].url || '');
+    });
+  }
+});
+
+// ─── Message handler ──────────────────────────────────────────────────────────
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.type === 'getCloudSync') {
     chrome.storage.sync.get(['cloudSync'], (data) => {
@@ -11,5 +74,18 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       sendResponse({ shortcuts: data.shortcuts });
     });
     return true;
+  }
+  if (request.type === 'socialVideoPlay') {
+    const { domain } = request;
+    if (domain !== 'ig' && domain !== 'fb') return;
+    const today = new Date().toDateString();
+    const key = `${domain}Stats`;
+    chrome.storage.local.get([key], (data) => {
+      const stats = data[key] || { dailyData: {} };
+      const day = stats.dailyData[today] || { activeTime: 0, videosWatched: 0 };
+      day.videosWatched = (day.videosWatched || 0) + 1;
+      stats.dailyData[today] = day;
+      chrome.storage.local.set({ [key]: stats });
+    });
   }
 });

@@ -190,6 +190,18 @@
     return el;
   }
 
+  // Track video play on social platforms (once per video element)
+  function trackSocialVideo(video) {
+    if (video._vhTracked) return;
+    video._vhTracked = true;
+    const h = location.hostname;
+    let domain = null;
+    if (h.includes('instagram.com')) domain = 'ig';
+    else if (h.includes('facebook.com') || h.includes('fb.com')) domain = 'fb';
+    if (!domain) return;
+    chrome.runtime.sendMessage({ type: 'socialVideoPlay', domain });
+  }
+
   function showOverlay(video) {
     if (!activeOverlay) {
       activeOverlay = createOverlay();
@@ -217,6 +229,7 @@
     }
 
     activeOverlay._targetVideo = video;
+    trackSocialVideo(video);
     positionOverlay(video);
     syncSpeedUI(video);
     requestAnimationFrame(() => activeOverlay.classList.add('vh-visible'));
