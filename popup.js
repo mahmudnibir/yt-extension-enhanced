@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const cloudSyncCheckbox = document.getElementById('cloudSync');
   const cloudSyncDesc = document.getElementById('cloudSyncDesc');
   const loopVideoCheckbox = document.getElementById('loopVideo');
+  const universalSpeedCheckbox = document.getElementById('universalSpeed');
 
   // Default values
   const defaults = { 
@@ -42,6 +43,11 @@ document.addEventListener('DOMContentLoaded', () => {
     cloudSyncCheckbox.checked = data.cloudSync !== false;
     loopVideoCheckbox.checked = data.loopVideo || false;
     updateCloudSyncDesc(data.cloudSync !== false);
+
+    // Load universalSpeed from local storage (used by video-hover.js)
+    chrome.storage.local.get(['universalSpeed'], (localData) => {
+      universalSpeedCheckbox.checked = !!localData.universalSpeed;
+    });
     updateSpeedDisplay(data.speed);
     
     // Animate elements in
@@ -63,7 +69,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const rememberSpeed = !!rememberSpeedCheckbox.checked;
     const cloudSync = !!cloudSyncCheckbox.checked;
     const loopVideo = !!loopVideoCheckbox.checked;
-    
+    const universalSpeed = !!universalSpeedCheckbox.checked;
+
+    // Save universalSpeed to local storage so video-hover.js can read it
+    chrome.storage.local.set({ universalSpeed });
+
     chrome.storage.sync.set({
       speed: speed.toString(),
       skipAds,
@@ -112,6 +122,7 @@ document.addEventListener('DOMContentLoaded', () => {
   hideSuggestionsCheckbox.addEventListener('change', autoSave);
   hideDescriptionCheckbox.addEventListener('change', autoSave);
   loopVideoCheckbox.addEventListener('change', autoSave);
+  universalSpeedCheckbox.addEventListener('change', autoSave);
   
   // Cloud sync toggle with migration
   cloudSyncCheckbox.addEventListener('change', async () => {

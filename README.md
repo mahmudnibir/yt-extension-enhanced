@@ -2,7 +2,7 @@
 
 > Advanced YouTube browser extension for power users.
 
-**Version** 2.1.0 &nbsp;·&nbsp; **Manifest** V3 &nbsp;·&nbsp; **Author** [Mahmud Nibir](https://github.com/mahmudnibir)
+**Version** 2.2.0 &nbsp;·&nbsp; **Manifest** V3 &nbsp;·&nbsp; **Author** [Mahmud Nibir](https://github.com/mahmudnibir)
 
 ---
 
@@ -11,6 +11,7 @@
 | Feature | Description |
 |---|---|
 | Speed Control | Playback speed from 0.25× to 20× via slider |
+| Universal Video Speed | Hover overlay on **any** video across the entire web — toggle in settings |
 | Bookmarks | Cloud-synced video timestamps with labels |
 | Ad Skip | Automatically skips YouTube advertisements |
 | Content Filters | Filter videos by keyword, channel, or duration |
