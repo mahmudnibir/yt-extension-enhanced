@@ -33,15 +33,13 @@
 
   // ─── Listener management ──────────────────────────────────────────────────
   function attachListeners() {
-    document.addEventListener('mouseover', onMouseOver, true);
-    document.addEventListener('mouseout', onMouseOut, true);
-    // Also watch for dynamically added videos
+    // Use mousemove (more reliable than mouseover on Instagram/TikTok)
+    document.addEventListener('mousemove', onMouseMove, true);
     observeDOM();
   }
 
   function detachListeners() {
-    document.removeEventListener('mouseover', onMouseOver, true);
-    document.removeEventListener('mouseout', onMouseOut, true);
+    document.removeEventListener('mousemove', onMouseMove, true);
     if (window._vhObserver) {
       window._vhObserver.disconnect();
       window._vhObserver = null;
@@ -50,29 +48,43 @@
 
   function observeDOM() {
     if (window._vhObserver) return;
-    window._vhObserver = new MutationObserver(() => {
-      // Re-use existing listeners — no extra work needed
-    });
+    window._vhObserver = new MutationObserver(() => {});
     window._vhObserver.observe(document.body, { childList: true, subtree: true });
   }
 
   // ─── Event handlers ───────────────────────────────────────────────────────
-  function onMouseOver(e) {
-    if (!enabled) return;
-    const video = e.target.closest('video');
-    if (!video) return;
-    clearTimeout(hideTimer);
-    showOverlay(video);
+  function findVideoAtPoint(x, y) {
+    // 1) Try elementsFromPoint (works even with pointer-events:none on video)
+    try {
+      const els = document.elementsFromPoint(x, y);
+      const v = els.find(el => el.tagName === 'VIDEO');
+      if (v) return v;
+    } catch (_) {}
+    // 2) Fallback: check every <video> bounding rect
+    const videos = document.querySelectorAll('video');
+    for (const v of videos) {
+      const r = v.getBoundingClientRect();
+      if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) return v;
+    }
+    return null;
   }
 
-  function onMouseOut(e) {
+  function onMouseMove(e) {
     if (!enabled) return;
-    const video = e.target.closest('video');
-    if (!video) return;
-    // Only hide if cursor isn't moving to the overlay itself
-    const related = e.relatedTarget;
-    if (activeOverlay && activeOverlay.contains(related)) return;
-    scheduleHide();
+    const video = findVideoAtPoint(e.clientX, e.clientY);
+    if (video) {
+      clearTimeout(hideTimer);
+      if (!activeOverlay || activeOverlay._targetVideo !== video) {
+        showOverlay(video);
+      } else {
+        positionOverlay(video);
+      }
+    } else {
+      // Cursor not over a video — schedule hide unless over overlay
+      if (activeOverlay && !activeOverlay.matches(':hover')) {
+        scheduleHide();
+      }
+    }
   }
 
   // ─── Overlay ──────────────────────────────────────────────────────────────
@@ -91,7 +103,7 @@
     const style = document.createElement('style');
     style.textContent = `
       #__vh_overlay__ {
-        position: absolute;
+        position: fixed;
         z-index: 2147483647;
         display: flex;
         flex-direction: column;
@@ -175,7 +187,8 @@
   function showOverlay(video) {
     if (!activeOverlay) {
       activeOverlay = createOverlay();
-      document.body.appendChild(activeOverlay);
+      // Append to <html> root — avoids CSS transform/overflow traps on body (Instagram, TikTok, etc.)
+      document.documentElement.appendChild(activeOverlay);
 
       // Wire controls
       const minusBtn = activeOverlay.querySelector('.vh-minus');
@@ -229,11 +242,10 @@
   function positionOverlay(video) {
     if (!activeOverlay) return;
     const rect = video.getBoundingClientRect();
-    const scrollX = window.scrollX || window.pageXOffset;
-    const scrollY = window.scrollY || window.pageYOffset;
     const overlayW = 120; // approximate
-    activeOverlay.style.top  = `${rect.top  + scrollY + 10}px`;
-    activeOverlay.style.left = `${rect.left + scrollX + rect.width / 2 - overlayW / 2}px`;
+    // Position at top-right corner of the video
+    activeOverlay.style.top  = `${rect.top + 10}px`;
+    activeOverlay.style.left = `${rect.right - overlayW - 10}px`;
   }
 
   function scheduleHide() {
