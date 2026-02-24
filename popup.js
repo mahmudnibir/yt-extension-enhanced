@@ -1,4 +1,166 @@
 document.addEventListener('DOMContentLoaded', () => {
+    // --- Productivity Graph ---
+    const prodRange = document.getElementById('prodRange');
+    const prodStatsGraph = document.getElementById('prodStatsGraph');
+    let prodStatsData = {};
+
+    // Helper: get range dates
+    function getRangeDates(range) {
+      const now = new Date();
+      let start, end;
+      end = new Date(now);
+      if (range === '1d') {
+        start = new Date(now);
+        start.setHours(start.getHours() - 23, 0, 0, 0);
+      } else if (range === '3d') {
+        start = new Date(now);
+        start.setDate(start.getDate() - 2);
+        start.setHours(0, 0, 0, 0);
+      } else if (range === '7d') {
+        start = new Date(now);
+        start.setDate(start.getDate() - 6);
+        start.setHours(0, 0, 0, 0);
+      } else if (range === '1m') {
+        start = new Date(now);
+        start.setMonth(start.getMonth() - 1);
+        start.setHours(0, 0, 0, 0);
+      } else {
+        start = new Date(now);
+      }
+      return { start, end };
+    }
+
+    // Draw minimalistic line graph (videos watched per day/hour)
+    function drawProdGraph(stats, range) {
+      if (!prodStatsGraph) return;
+      const ctx = prodStatsGraph.getContext('2d');
+      ctx.clearRect(0, 0, prodStatsGraph.width, prodStatsGraph.height);
+      // Use computed styles for theme colors
+      const root = document.documentElement;
+      const computed = getComputedStyle(root);
+      const axisColor = computed.getPropertyValue('--border-color')?.trim() || '#888';
+      const lineColor = computed.getPropertyValue('--accent-color')?.trim() || '#ff0000';
+      const pointColor = computed.getPropertyValue('--accent-color')?.trim() || '#ff0000';
+      const labelColor = computed.getPropertyValue('--text-primary')?.trim() || '#fff';
+      const bgColor = computed.getPropertyValue('--bg-card')?.trim() || '#181818';
+      // Fill background to match card
+      ctx.save();
+      ctx.fillStyle = bgColor;
+      ctx.fillRect(0, 0, prodStatsGraph.width, prodStatsGraph.height);
+      ctx.restore();
+
+      // Prepare data
+      let labels = [];
+      let values = [];
+      const { start, end } = getRangeDates(range);
+      if (range === '1d') {
+        // Last 24 hours, show by hour
+        for (let h = 0; h < 24; h++) {
+          const d = new Date(start);
+          d.setHours(start.getHours() + h);
+          const key = d.toDateString();
+          // Sum all videos for this hour
+          let hourVal = 0;
+          for (let k in stats) {
+            const statDate = new Date(k);
+            if (statDate.toDateString() === d.toDateString() && stats[k].hourly) {
+              hourVal = stats[k].hourly[d.getHours()] || 0;
+            }
+          }
+          labels.push(d.getHours() + ':00');
+          values.push(hourVal);
+        }
+      } else {
+        // By day
+        let d = new Date(start);
+        d.setHours(0, 0, 0, 0);
+        while (d <= end) {
+          const key = d.toDateString();
+          labels.push(new Date(d));
+          values.push((stats[key]?.videos) || 0);
+          d.setDate(d.getDate() + 1);
+        }
+      }
+
+      // Graph area
+      const w = prodStatsGraph.width;
+      const h = prodStatsGraph.height;
+      const pad = 24;
+      const maxVal = Math.max(1, ...values);
+      // Draw axis
+      ctx.strokeStyle = axisColor;
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(pad, h - pad);
+      ctx.lineTo(w - pad, h - pad);
+      ctx.moveTo(pad, h - pad);
+      ctx.lineTo(pad, pad);
+      ctx.stroke();
+      // Draw line
+      ctx.strokeStyle = lineColor;
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      values.forEach((v, i) => {
+        const x = pad + (i * (w - 2 * pad)) / (values.length - 1 || 1);
+        const y = h - pad - (v * (h - 2 * pad)) / maxVal;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.shadowColor = lineColor + '55';
+      ctx.shadowBlur = 4;
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+      // Draw points
+      ctx.fillStyle = pointColor;
+      values.forEach((v, i) => {
+        const x = pad + (i * (w - 2 * pad)) / (values.length - 1 || 1);
+        const y = h - pad - (v * (h - 2 * pad)) / maxVal;
+        ctx.beginPath();
+        ctx.arc(x, y, 3.5, 0, 2 * Math.PI);
+        ctx.fill();
+      });
+      // Draw min/max labels
+      ctx.fillStyle = labelColor;
+      ctx.font = '11px "Segoe UI", Arial, sans-serif';
+      ctx.fillText(maxVal, 2, pad + 6);
+      ctx.fillText('0', 6, h - pad + 10);
+      // Draw X axis labels
+      ctx.save();
+      ctx.font = '10px "Segoe UI", Arial, sans-serif';
+      ctx.fillStyle = labelColor;
+      ctx.textAlign = 'center';
+      let labelStep = 1;
+      if (labels.length > 8) labelStep = Math.ceil(labels.length / 8);
+      labels.forEach((lbl, i) => {
+        let showLabel = false;
+        let text = '';
+        if (range === '1d') {
+          // Show only 6 labels: every 4 hours, and always last (23:00)
+          if (i % 4 === 0 || i === labels.length - 1) showLabel = true;
+          text = lbl;
+        } else if (range === '1m') {
+          showLabel = (i % labelStep === 0 || i === labels.length - 1);
+          text = lbl.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        } else {
+          showLabel = (i % labelStep === 0 || i === labels.length - 1);
+          text = lbl.toLocaleDateString('en-US', { weekday: 'short' });
+        }
+        if (showLabel) {
+          const x = pad + (i * (w - 2 * pad)) / (labels.length - 1 || 1);
+          ctx.fillText(text, x, h - pad + 16);
+        }
+      });
+      ctx.restore();
+    }
+
+    function updateProdGraph() {
+      if (!prodStatsData || !prodRange.value) return;
+      drawProdGraph(prodStatsData, prodRange.value);
+    }
+
+    if (prodRange) {
+      prodRange.addEventListener('change', updateProdGraph);
+    }
   const speedInput = document.getElementById('speed');
   const speedDisplay = document.getElementById('speedDisplay');
   const skipAdsCheckbox = document.getElementById('skipAds');
@@ -666,6 +828,12 @@ document.addEventListener('DOMContentLoaded', () => {
       } else {
         document.getElementById('avgSpeed').textContent = '1.0×';
       }
+
+      // Save dailyStats for graph
+      prodStatsData = stats.dailyStats || {};
+
+      // Draw graph for default range (last 7 days)
+      setTimeout(updateProdGraph, 100);
 
       // Update today's statistics
       const today = new Date().toDateString();
