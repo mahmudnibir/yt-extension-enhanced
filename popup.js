@@ -1001,6 +1001,15 @@ document.addEventListener('DOMContentLoaded', () => {
       setTimeout(() => { refreshFbBtn.style.transform = 'rotate(0deg)'; }, 500);
     });
   }
+  const resetFbBtn = document.getElementById('resetFbStats');
+  if (resetFbBtn) {
+    resetFbBtn.addEventListener('click', () => {
+      if (!confirm('Reset all Facebook stats? This cannot be undone.')) return;
+      chrome.storage.local.remove(['fbStats'], () => {
+        loadSocialStats();
+      });
+    });
+  }
 
   // Load statistics on page load
   loadStatistics();
