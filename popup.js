@@ -944,16 +944,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
       set('ig-total-reels',     all.videos);
-      set('ig-total-time',      formatTime(all.time));
+      set('ig-total-time',      formatTime(all.time / 60));
       set('ig-today-reels',     todayD.videosWatched || 0);
-      set('ig-today-time',      formatTimeShort(todayD.activeTime || 0));
-      set('ig-chat-time-today', formatTimeShort(todayD.chatTime || 0));
+      set('ig-today-time',      formatTimeShort(todayD.activeTime / 60 || 0));
+      set('ig-chat-time-today', formatTimeShort(todayD.chatTime / 60 || 0));
       set('ig-day-reels',       todayD.videosWatched || 0);
-      set('ig-day-time',        formatTimeShort(todayD.activeTime || 0));
-      set('ig-day-chat',        formatTimeShort(todayD.chatTime || 0));
+      set('ig-day-time',        formatTimeShort(todayD.activeTime / 60 || 0));
+      set('ig-day-chat',        formatTimeShort(todayD.chatTime / 60 || 0));
       set('ig-week-reels',      week.videos);
-      set('ig-week-time',       formatTimeShort(week.time));
-      set('ig-week-chat',       formatTimeShort(week.chat));
+      set('ig-week-time',       formatTimeShort(week.time / 60));
+      set('ig-week-chat',       formatTimeShort(week.chat / 60));
       const igDate = document.getElementById('ig-today-date');
       if (igDate) igDate.textContent = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     });
@@ -967,16 +967,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
       set('fb-total-videos',    all.videos);
-      set('fb-total-time',      formatTime(all.time));
+      set('fb-total-time',      formatTime(all.time / 60));
       set('fb-today-videos',    todayD.videosWatched || 0);
-      set('fb-today-time',      formatTimeShort(todayD.activeTime || 0));
-      set('fb-chat-time-today', formatTimeShort(todayD.chatTime || 0));
+      set('fb-today-time',      formatTimeShort(todayD.activeTime / 60 || 0));
+      set('fb-chat-time-today', formatTimeShort(todayD.chatTime / 60 || 0));
       set('fb-day-videos',      todayD.videosWatched || 0);
-      set('fb-day-time',        formatTimeShort(todayD.activeTime || 0));
-      set('fb-day-chat',        formatTimeShort(todayD.chatTime || 0));
+      set('fb-day-time',        formatTimeShort(todayD.activeTime / 60 || 0));
+      set('fb-day-chat',        formatTimeShort(todayD.chatTime / 60 || 0));
       set('fb-week-videos',     week.videos);
-      set('fb-week-time',       formatTimeShort(week.time));
-      set('fb-week-chat',       formatTimeShort(week.chat));
+      set('fb-week-time',       formatTimeShort(week.time / 60));
+      set('fb-week-chat',       formatTimeShort(week.chat / 60));
       const fbDate = document.getElementById('fb-today-date');
       if (fbDate) fbDate.textContent = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     });
