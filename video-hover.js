@@ -127,7 +127,7 @@
         align-items: center;
         gap: 4px;
         padding: 3px 7px;
-        background: rgba(0,0,0,0.6);
+        background: rgba(0,0,0,0.35);
         backdrop-filter: none;
         -webkit-backdrop-filter: none;
         border: none;
