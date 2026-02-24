@@ -135,7 +135,7 @@
         box-shadow: 0 2px 10px rgba(0,0,0,0.5);
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
         pointer-events: all;
-        transition: opacity 0.15s ease, transform 0.15s ease;
+        transition: opacity 0.08s ease, transform 0.08s ease;
         opacity: 0;
         transform: scale(0.92);
         user-select: none;
@@ -230,7 +230,7 @@
 
   function scheduleHide() {
     clearTimeout(hideTimer);
-    hideTimer = setTimeout(removeOverlay, 800);
+    hideTimer = setTimeout(removeOverlay, 0);
   }
 
   function removeOverlay() {
