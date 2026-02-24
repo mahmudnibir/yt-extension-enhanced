@@ -127,10 +127,10 @@
         align-items: center;
         gap: 4px;
         padding: 4px 6px;
-        background: rgba(10,10,10,0.78);
+        background: rgba(33,33,33,0.92);
         backdrop-filter: blur(10px);
         -webkit-backdrop-filter: blur(10px);
-        border: 1px solid rgba(255,255,255,0.1);
+        border: 1px solid rgba(255,255,255,0.07);
         border-radius: 8px;
         box-shadow: 0 2px 10px rgba(0,0,0,0.5);
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -147,7 +147,7 @@
       .vh-btn {
         background: none;
         border: none;
-        color: rgba(255,255,255,0.85);
+        color: rgba(255,255,255,0.72);
         width: 20px;
         height: 20px;
         border-radius: 50%;
@@ -161,7 +161,7 @@
         padding: 0;
         flex-shrink: 0;
       }
-      .vh-btn:hover { color: #fff; }
+      .vh-btn:hover { color: rgba(255,255,255,0.95); }
       .vh-btn:active { transform: scale(0.82); }
       .vh-label {
         color: #fff;
