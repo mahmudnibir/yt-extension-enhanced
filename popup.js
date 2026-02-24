@@ -915,14 +915,15 @@ document.addEventListener('DOMContentLoaded', () => {
     weekAgo.setDate(weekAgo.getDate() - 7);
 
     function sumWeek(dailyData) {
-      let videos = 0, time = 0;
+      let videos = 0, time = 0, chat = 0;
       Object.keys(dailyData).forEach(dateStr => {
         if (new Date(dateStr) >= weekAgo) {
           videos += dailyData[dateStr].videosWatched || 0;
           time   += dailyData[dateStr].activeTime    || 0;
+          chat   += dailyData[dateStr].chatTime      || 0;
         }
       });
-      return { videos, time };
+      return { videos, time, chat };
     }
 
     function sumAll(dailyData) {
@@ -942,14 +943,17 @@ document.addEventListener('DOMContentLoaded', () => {
       const all    = sumAll(daily);
 
       const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
-      set('ig-total-reels',  all.videos);
-      set('ig-total-time',   formatTime(all.time));
-      set('ig-today-reels',  todayD.videosWatched || 0);
-      set('ig-today-time',   formatTimeShort(todayD.activeTime || 0));
-      set('ig-day-reels',    todayD.videosWatched || 0);
-      set('ig-day-time',     formatTimeShort(todayD.activeTime || 0));
-      set('ig-week-reels',   week.videos);
-      set('ig-week-time',    formatTimeShort(week.time));
+      set('ig-total-reels',     all.videos);
+      set('ig-total-time',      formatTime(all.time));
+      set('ig-today-reels',     todayD.videosWatched || 0);
+      set('ig-today-time',      formatTimeShort(todayD.activeTime || 0));
+      set('ig-chat-time-today', formatTimeShort(todayD.chatTime || 0));
+      set('ig-day-reels',       todayD.videosWatched || 0);
+      set('ig-day-time',        formatTimeShort(todayD.activeTime || 0));
+      set('ig-day-chat',        formatTimeShort(todayD.chatTime || 0));
+      set('ig-week-reels',      week.videos);
+      set('ig-week-time',       formatTimeShort(week.time));
+      set('ig-week-chat',       formatTimeShort(week.chat));
       const igDate = document.getElementById('ig-today-date');
       if (igDate) igDate.textContent = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     });
@@ -962,16 +966,39 @@ document.addEventListener('DOMContentLoaded', () => {
       const all    = sumAll(daily);
 
       const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
-      set('fb-total-videos', all.videos);
-      set('fb-total-time',   formatTime(all.time));
-      set('fb-today-videos', todayD.videosWatched || 0);
-      set('fb-today-time',   formatTimeShort(todayD.activeTime || 0));
-      set('fb-day-videos',   todayD.videosWatched || 0);
-      set('fb-day-time',     formatTimeShort(todayD.activeTime || 0));
-      set('fb-week-videos',  week.videos);
-      set('fb-week-time',    formatTimeShort(week.time));
+      set('fb-total-videos',    all.videos);
+      set('fb-total-time',      formatTime(all.time));
+      set('fb-today-videos',    todayD.videosWatched || 0);
+      set('fb-today-time',      formatTimeShort(todayD.activeTime || 0));
+      set('fb-chat-time-today', formatTimeShort(todayD.chatTime || 0));
+      set('fb-day-videos',      todayD.videosWatched || 0);
+      set('fb-day-time',        formatTimeShort(todayD.activeTime || 0));
+      set('fb-day-chat',        formatTimeShort(todayD.chatTime || 0));
+      set('fb-week-videos',     week.videos);
+      set('fb-week-time',       formatTimeShort(week.time));
+      set('fb-week-chat',       formatTimeShort(week.chat));
       const fbDate = document.getElementById('fb-today-date');
       if (fbDate) fbDate.textContent = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    });
+  }
+
+  // Refresh buttons for social panels
+  const refreshIgBtn = document.getElementById('refreshIgStats');
+  if (refreshIgBtn) {
+    refreshIgBtn.addEventListener('click', () => {
+      loadSocialStats();
+      refreshIgBtn.style.transition = 'transform 0.5s';
+      refreshIgBtn.style.transform = 'rotate(360deg)';
+      setTimeout(() => { refreshIgBtn.style.transform = 'rotate(0deg)'; }, 500);
+    });
+  }
+  const refreshFbBtn = document.getElementById('refreshFbStats');
+  if (refreshFbBtn) {
+    refreshFbBtn.addEventListener('click', () => {
+      loadSocialStats();
+      refreshFbBtn.style.transition = 'transform 0.5s';
+      refreshFbBtn.style.transform = 'rotate(360deg)';
+      setTimeout(() => { refreshFbBtn.style.transform = 'rotate(0deg)'; }, 500);
     });
   }
 

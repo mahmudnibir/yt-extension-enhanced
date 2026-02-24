@@ -3,15 +3,26 @@
 // ─── Site-time tracking for Instagram & Facebook ─────────────────────────────
 let activeTabId = null;
 let activeTabDomain = null;
+let activeTabUrl = null;
 let lastActiveTime = null;
 
 function getDomain(url) {
   try {
     const h = new URL(url).hostname;
     if (h.includes('instagram.com')) return 'ig';
-    if (h.includes('facebook.com') || h.includes('fb.com')) return 'fb';
+    if (h.includes('facebook.com') || h.includes('fb.com') || h.includes('messenger.com')) return 'fb';
     return null;
   } catch (_) { return null; }
+}
+
+function isChat(url) {
+  try {
+    const u = new URL(url);
+    if (u.hostname.includes('instagram.com') && u.pathname.startsWith('/direct/')) return true;
+    if (u.hostname.includes('messenger.com')) return true;
+    if (u.hostname.includes('facebook.com') && u.pathname.startsWith('/messages/')) return true;
+    return false;
+  } catch (_) { return false; }
 }
 
 function recordTime(domain) {
@@ -20,10 +31,12 @@ function recordTime(domain) {
   if (elapsed <= 0 || elapsed > 7200) { lastActiveTime = null; return; }
   const today = new Date().toDateString();
   const key = `${domain}Stats`;
+  const chat = isChat(activeTabUrl || '');
   chrome.storage.local.get([key], (data) => {
     const stats = data[key] || { dailyData: {} };
-    const day = stats.dailyData[today] || { activeTime: 0, videosWatched: 0 };
+    const day = stats.dailyData[today] || { activeTime: 0, videosWatched: 0, chatTime: 0 };
     day.activeTime = (day.activeTime || 0) + elapsed;
+    if (chat) day.chatTime = (day.chatTime || 0) + elapsed;
     stats.dailyData[today] = day;
     chrome.storage.local.set({ [key]: stats });
   });
@@ -33,6 +46,7 @@ function recordTime(domain) {
 function switchActive(tabId, url) {
   recordTime(activeTabDomain);
   activeTabId = tabId;
+  activeTabUrl = url;
   activeTabDomain = getDomain(url);
   lastActiveTime = activeTabDomain ? Date.now() : null;
 }
