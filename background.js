@@ -51,9 +51,14 @@ function switchActive(tabId, url) {
   lastActiveTime = activeTabDomain ? Date.now() : null;
 }
 
+// Generation counter — incremented on every onActivated so stale async callbacks are ignored
+let activationGen = 0;
+
 chrome.tabs.onActivated.addListener((info) => {
+  const gen = ++activationGen;
   chrome.tabs.get(info.tabId, (tab) => {
     if (chrome.runtime.lastError) return;
+    if (gen !== activationGen) return; // stale callback — a newer activation already won
     switchActive(info.tabId, tab.url || '');
   });
 });
@@ -62,7 +67,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   if (tabId !== activeTabId || !changeInfo.url) return;
   const newDomain = getDomain(changeInfo.url);
   if (newDomain === activeTabDomain) {
-    // Same platform — just update the URL so chat detection stays current, don't reset the clock
+    // Same platform — just update URL for chat detection, don't reset the clock
     activeTabUrl = changeInfo.url;
   } else {
     // Domain actually changed — flush + restart
@@ -75,11 +80,20 @@ chrome.windows.onFocusChanged.addListener((windowId) => {
     recordTime(activeTabDomain);
     lastActiveTime = null;
   } else {
+    const gen = ++activationGen;
     chrome.tabs.query({ active: true, windowId }, (tabs) => {
+      if (gen !== activationGen) return;
       if (tabs && tabs[0]) switchActive(tabs[0].id, tabs[0].url || '');
     });
   }
 });
+
+// Periodic flush every 10 s so time is written continuously, not just on tab switches
+setInterval(() => {
+  if (activeTabDomain && lastActiveTime) {
+    recordTime(activeTabDomain);
+  }
+}, 10000);
 
 // ─── Message handler ──────────────────────────────────────────────────────────
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
