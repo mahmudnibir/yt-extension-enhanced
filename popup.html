@@ -1,6 +1,35 @@
 ﻿<!DOCTYPE html>
 <html lang="en">
 <head>
+    <style>
+      .prod-range-label {
+        color: var(--text-secondary);
+        font-size: 14px;
+        margin-right: 2px;
+        font-weight: 500;
+        letter-spacing: 0.1px;
+      }
+      .prod-range-select {
+        background: var(--bg-card);
+        color: var(--text-primary);
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        padding: 4px 10px 4px 8px;
+        font-size: 14px;
+        font-family: inherit;
+        outline: none;
+        transition: border 0.2s, background 0.2s;
+        box-shadow: none;
+      }
+      .prod-range-select:focus, .prod-range-select:hover {
+        border: 1.5px solid var(--accent-color);
+        background: var(--bg-card-hover);
+      }
+      .prod-range-select option {
+        background: var(--bg-card);
+        color: var(--text-primary);
+      }
+    </style>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
   <title>YouTube Enhanced</title>
@@ -1489,7 +1518,18 @@
       <!-- Productivity Dashboard -->
       <section>
         <h2>Productivity Dashboard</h2>
-        
+        <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 12px;">
+          <label for="prodRange" class="prod-range-label">Range:</label>
+          <select id="prodRange" class="prod-range-select">
+            <option value="1d">Last 24 hours</option>
+            <option value="3d">Last 3 days</option>
+            <option value="7d" selected>Last 7 days</option>
+            <option value="1m">Last 1 month</option>
+          </select>
+        </div>
+        <div style="width: 100%; max-width: 100%; background: none; margin-bottom: 18px;">
+          <canvas id="prodStatsGraph" height="120" style="width: 100%; background: none;"></canvas>
+        </div>
         <div class="dashboard-card">
           <div class="dashboard-header">
             <div class="dashboard-title">Today's Activity</div>
