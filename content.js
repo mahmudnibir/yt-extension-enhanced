@@ -39,11 +39,11 @@
     }
   });
   
-  // Get storage based on cloudSync setting
+  // Get storage object based on cloudSync setting
   function getBookmarkStorage(callback) {
     chrome.runtime.sendMessage({ type: 'getCloudSync' }, (data) => {
       const useCloudSync = data && data.cloudSync !== false; // Default true
-      callback(useCloudSync ? 'sync' : 'local');
+      callback(useCloudSync ? chrome.storage.sync : chrome.storage.local);
     });
   }
 
@@ -59,8 +59,7 @@
     if (!videoId) return;
     storageKey = `yt_bm_${videoId}`;
 
-    getBookmarkStorage((storageType) => {
-      const storage = storageType === 'sync' ? chrome.storage.sync : chrome.storage.local;
+    getBookmarkStorage((storage) => {
       storage.get([storageKey], (res) => {
         bookmarks = Array.isArray(res[storageKey]) ? res[storageKey] : [];
         bookmarks.sort((a, b) => a.time - b.time);
