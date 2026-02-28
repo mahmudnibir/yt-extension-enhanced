@@ -263,16 +263,19 @@
   chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === 'updateSettings') {
       console.log('Received updateSettings message');
+      const videoEl = document.querySelector('video');
+      // Apply pitch correction immediately if present
+      if (request.settings && typeof request.settings.pitchCorrection !== 'undefined') {
+        applyPitchCorrection(videoEl, request.settings.pitchCorrection);
+      }
       // If loopVideo is present in settings, apply immediately
       if (request.settings && typeof request.settings.loopVideo !== 'undefined') {
-        const video = document.querySelector('video');
-        if (video) video.loop = !!request.settings.loopVideo;
+        if (videoEl) videoEl.loop = !!request.settings.loopVideo;
       }
       applyContentControls();
       if (typeof request.speed !== 'undefined') {
-        const video = document.querySelector('video');
-        if (video && !isNaN(request.speed)) {
-          video.playbackRate = parseFloat(request.speed);
+        if (videoEl && !isNaN(request.speed)) {
+          videoEl.playbackRate = parseFloat(request.speed);
           showSpeedOverlay(request.speed);
           saveSpeed(request.speed);
         }
@@ -452,12 +455,30 @@
   };
 
   // Apply speed settings
+  // Apply pitch correction (preserve pitch when speed changes)
+  function applyPitchCorrection(videoEl, enabled) {
+    if (!videoEl) return;
+    // `preservesPitch` keeps audio pitch locked regardless of playback rate.
+    // When true  → natural-sounding speech/music at any speed.
+    // When false → chipmunk/slow-mo effect follows the rate change.
+    if (typeof videoEl.preservesPitch !== 'undefined') {
+      videoEl.preservesPitch = !!enabled;
+    }
+    // Firefox prefix
+    if (typeof videoEl.mozPreservesPitch !== 'undefined') {
+      videoEl.mozPreservesPitch = !!enabled;
+    }
+  }
+
   function applySettings() {
     if (manualOverride) return; // Prevent auto-speed adjustment during manual override
 
-    chrome.storage.sync.get(["speed", "rememberSpeed"], ({ speed, rememberSpeed }) => {
+    chrome.storage.sync.get(["speed", "rememberSpeed", "pitchCorrection"], ({ speed, rememberSpeed, pitchCorrection }) => {
       const video = document.querySelector('video');
       if (!video || !speed) return;
+
+      // Apply pitch correction setting (default: true = preserve pitch)
+      applyPitchCorrection(video, pitchCorrection !== false);
 
       // If remember speed per video is enabled, check for video-specific speed
       if (rememberSpeed && storageKey) {

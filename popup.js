@@ -173,6 +173,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const cloudSyncDesc = document.getElementById('cloudSyncDesc');
   const loopVideoCheckbox = document.getElementById('loopVideo');
   const universalSpeedCheckbox = document.getElementById('universalSpeed');
+  const pitchCorrectionCheckbox = document.getElementById('pitchCorrection');
 
   // Default values
   const defaults = { 
@@ -184,7 +185,8 @@ document.addEventListener('DOMContentLoaded', () => {
     hideSuggestions: false,
     rememberSpeed: false,
     cloudSync: true,
-    loopVideo: false
+    loopVideo: false,
+    pitchCorrection: true
   };
 
   // Update speed display with enhanced formatting
@@ -204,6 +206,7 @@ document.addEventListener('DOMContentLoaded', () => {
     rememberSpeedCheckbox.checked = data.rememberSpeed || false;
     cloudSyncCheckbox.checked = data.cloudSync !== false;
     loopVideoCheckbox.checked = data.loopVideo || false;
+    pitchCorrectionCheckbox.checked = data.pitchCorrection !== false;
     updateCloudSyncDesc(data.cloudSync !== false);
 
     // Load universalSpeed from local storage (used by video-hover.js)
@@ -232,6 +235,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const cloudSync = !!cloudSyncCheckbox.checked;
     const loopVideo = !!loopVideoCheckbox.checked;
     const universalSpeed = !!universalSpeedCheckbox.checked;
+    const pitchCorrection = !!pitchCorrectionCheckbox.checked;
 
     // Save universalSpeed to local storage so video-hover.js can read it
     chrome.storage.local.set({ universalSpeed });
@@ -245,7 +249,8 @@ document.addEventListener('DOMContentLoaded', () => {
       hideSuggestions,
       rememberSpeed,
       cloudSync,
-      loopVideo
+      loopVideo,
+      pitchCorrection
     }, () => {
       // Notify content script to apply changes and update speed immediately
       chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
@@ -253,7 +258,7 @@ document.addEventListener('DOMContentLoaded', () => {
           chrome.tabs.sendMessage(tabs[0].id, {
             action: 'updateSettings',
             speed: speed,
-            settings: { hideComments, hideShorts, hideDescription, hideSuggestions, loopVideo }
+            settings: { hideComments, hideShorts, hideDescription, hideSuggestions, loopVideo, pitchCorrection }
           }, (response) => {
             if (chrome.runtime.lastError) {
               console.log('Message sending error:', chrome.runtime.lastError.message);
@@ -285,6 +290,7 @@ document.addEventListener('DOMContentLoaded', () => {
   hideDescriptionCheckbox.addEventListener('change', autoSave);
   loopVideoCheckbox.addEventListener('change', autoSave);
   universalSpeedCheckbox.addEventListener('change', autoSave);
+  pitchCorrectionCheckbox.addEventListener('change', autoSave);
   
   // Cloud sync toggle with migration
   cloudSyncCheckbox.addEventListener('change', async () => {
