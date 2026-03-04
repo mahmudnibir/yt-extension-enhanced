@@ -2,6 +2,79 @@
 <html lang="en">
 <head>
     <style>
+      /* ── Custom voice-mode dropdown ─────────────────────────────────── */
+      .vm-select {
+        position: relative;
+        width: 100%;
+        user-select: none;
+        z-index: 20;
+      }
+      .vm-trigger {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 9px 13px;
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-color);
+        border-radius: 10px;
+        cursor: pointer;
+        transition: border-color 0.2s, background 0.2s;
+        color: var(--text-primary);
+        font-size: 13px;
+        font-family: inherit;
+      }
+      .vm-trigger:hover,
+      .vm-select.open .vm-trigger {
+        border-color: var(--accent-color);
+        background: var(--bg-card-hover);
+      }
+      .vm-arrow {
+        width: 14px;
+        height: 14px;
+        opacity: 0.45;
+        flex-shrink: 0;
+        transition: transform 0.2s, opacity 0.2s;
+      }
+      .vm-select.open .vm-arrow {
+        transform: rotate(180deg);
+        opacity: 0.9;
+      }
+      .vm-options {
+        display: none;
+        position: absolute;
+        bottom: calc(100% + 5px);
+        left: 0;
+        right: 0;
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 10px;
+        overflow: hidden;
+        z-index: 999;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.55);
+        padding: 4px;
+      }
+      .vm-select.open .vm-options { display: block; }
+      .vm-option {
+        padding: 8px 12px;
+        font-size: 13px;
+        color: var(--text-secondary);
+        cursor: pointer;
+        border-radius: 7px;
+        transition: background 0.12s, color 0.12s;
+      }
+      .vm-option:hover {
+        background: var(--bg-card-hover);
+        color: var(--text-primary);
+      }
+      .vm-option.vm-active {
+        color: var(--accent-color);
+        font-weight: 600;
+        background: rgba(255,0,0,0.07);
+      }
+      [data-theme="blue"] .vm-option.vm-active {
+        background: rgba(79,130,255,0.09);
+      }
+      /* ── Productivity range select ───────────────────────────────────── */
       .prod-range-label {
         color: var(--text-secondary);
         font-size: 14px;
@@ -15,11 +88,13 @@
         border: 1px solid var(--border-color);
         border-radius: 6px;
         padding: 4px 10px 4px 8px;
-        font-size: 14px;
+        font-size: 13px;
         font-family: inherit;
         outline: none;
+        width: 100%;
         transition: border 0.2s, background 0.2s;
         box-shadow: none;
+        cursor: pointer;
       }
       .prod-range-select:focus, .prod-range-select:hover {
         border: 1.5px solid var(--accent-color);
@@ -253,6 +328,7 @@
     
     .setting-item-full {
       justify-content: space-between;
+      cursor: pointer;
     }
     
     .setting-icon {
@@ -1328,25 +1404,33 @@
           </div>
         </div>
 
-        <div class="setting-item setting-item-full">
+        <div class="setting-item" style="flex-direction: column; align-items: stretch; gap: 10px;">
           <div style="display: flex; align-items: center; gap: 12px;">
             <div class="setting-icon">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M9 18V5l12-2v13"></path>
-                <circle cx="6" cy="18" r="3"></circle>
-                <circle cx="18" cy="16" r="3"></circle>
+                <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"></path>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                <line x1="12" y1="19" x2="12" y2="23"></line>
+                <line x1="8" y1="23" x2="16" y2="23"></line>
               </svg>
             </div>
             <div class="setting-content">
-              <div class="setting-title">Pitch Correction</div>
-              <div class="setting-desc">Lock audio pitch when changing playback speed</div>
+              <div class="setting-title">Voice Mode</div>
+              <div class="setting-desc" id="voiceModeDesc">Natural pitch at any playback speed</div>
             </div>
           </div>
-          <div>
-            <input id="pitchCorrection" type="checkbox" class="toggle-input">
-            <label for="pitchCorrection" class="toggle-label">
-              <div class="toggle-thumb"></div>
-            </label>
+          <div class="vm-select" id="vmSelect">
+            <div class="vm-trigger" id="vmTrigger">
+              <span id="vmLabel">Normal</span>
+              <svg class="vm-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </div>
+            <div class="vm-options" id="vmOptions">
+              <div class="vm-option vm-active" data-value="normal">Normal</div>
+              <div class="vm-option" data-value="chipmunk">Chipmunk</div>
+              <div class="vm-option" data-value="bassboost">Bass Boost</div>
+              <div class="vm-option" data-value="robot">Robot</div>
+              <div class="vm-option" data-value="echo">Echo</div>
+            </div>
           </div>
         </div>
       </section>

@@ -1,4 +1,18 @@
 document.addEventListener('DOMContentLoaded', () => {
+
+  // --- Whole-card toggle UX --------------------------------------------------
+  // Clicking anywhere on a .setting-item-full row toggles its checkbox,
+  // unless the click already landed on the toggle-label/input (natural toggle).
+  document.querySelectorAll('.setting-item-full').forEach(card => {
+    card.addEventListener('click', e => {
+      // Let the label/input handle itself naturally to avoid double-fire
+      if (e.target.closest('.toggle-label') || e.target.closest('.toggle-input')) return;
+      const input = card.querySelector('.toggle-input');
+      if (input) input.click();
+    });
+  });
+  // ---------------------------------------------------------------------------
+
     // --- Productivity Graph ---
     const prodRange = document.getElementById('prodRange');
     const prodStatsGraph = document.getElementById('prodStatsGraph');
@@ -173,7 +187,66 @@ document.addEventListener('DOMContentLoaded', () => {
   const cloudSyncDesc = document.getElementById('cloudSyncDesc');
   const loopVideoCheckbox = document.getElementById('loopVideo');
   const universalSpeedCheckbox = document.getElementById('universalSpeed');
-  const pitchCorrectionCheckbox = document.getElementById('pitchCorrection');
+  const voiceModeDesc = document.getElementById('voiceModeDesc');
+
+  /**
+   * Builds a select-like proxy object around the custom div dropdown.
+   * Exposes .value (get/set) and .addEventListener('change', fn)
+   * so the rest of popup.js needs zero further changes.
+   */
+  const voiceModeSelect = (() => {
+    const container = document.getElementById('vmSelect');
+    const trigger   = document.getElementById('vmTrigger');
+    const label     = document.getElementById('vmLabel');
+    const optEls    = document.querySelectorAll('#vmOptions .vm-option');
+    let _val = 'normal';
+    const _handlers = [];
+
+    // Toggle dropdown open/close
+    trigger.addEventListener('click', (e) => {
+      e.stopPropagation();
+      container.classList.toggle('open');
+    });
+    // Close on outside click
+    document.addEventListener('click', () => container.classList.remove('open'));
+
+    // Option selection
+    optEls.forEach(opt => {
+      opt.addEventListener('click', (e) => {
+        e.stopPropagation();
+        proxy.value = opt.dataset.value;
+        container.classList.remove('open');
+        _handlers.forEach(fn => fn());
+      });
+    });
+
+    const proxy = {
+      get value() { return _val; },
+      set value(v) {
+        _val = v;
+        const matched = container.querySelector(`[data-value="${v}"]`);
+        label.textContent = matched ? matched.textContent : v;
+        optEls.forEach(o => o.classList.toggle('vm-active', o.dataset.value === v));
+      },
+      addEventListener(type, fn) {
+        if (type === 'change') _handlers.push(fn);
+      },
+    };
+    return proxy;
+  })();
+
+  /** Maps each voice mode to a short description shown under the label. */
+  const VOICE_DESCS = {
+    normal:    'Natural pitch at any playback speed',
+    chipmunk:  'Pitch follows speed — cartoon high, demon low',
+    bassboost: 'Warm bass boost on the audio output',
+    robot:     'Robotic ring-modulation effect',
+    echo:      'Echoing reverb with feedback delay',
+  };
+
+  function updateVoiceModeDesc(mode) {
+    if (voiceModeDesc) voiceModeDesc.textContent = VOICE_DESCS[mode] || '';
+  }
 
   // Default values
   const defaults = { 
@@ -186,7 +259,7 @@ document.addEventListener('DOMContentLoaded', () => {
     rememberSpeed: false,
     cloudSync: true,
     loopVideo: false,
-    pitchCorrection: true
+    voiceMode: 'normal',
   };
 
   // Update speed display with enhanced formatting
@@ -206,7 +279,10 @@ document.addEventListener('DOMContentLoaded', () => {
     rememberSpeedCheckbox.checked = data.rememberSpeed || false;
     cloudSyncCheckbox.checked = data.cloudSync !== false;
     loopVideoCheckbox.checked = data.loopVideo || false;
-    pitchCorrectionCheckbox.checked = data.pitchCorrection !== false;
+    // Voice mode (migrate legacy pitchCorrection boolean to voiceMode)
+    const mode = data.voiceMode || (data.pitchCorrection === false ? 'chipmunk' : 'normal');
+    voiceModeSelect.value = mode;
+    updateVoiceModeDesc(mode);
     updateCloudSyncDesc(data.cloudSync !== false);
 
     // Load universalSpeed from local storage (used by video-hover.js)
@@ -235,7 +311,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const cloudSync = !!cloudSyncCheckbox.checked;
     const loopVideo = !!loopVideoCheckbox.checked;
     const universalSpeed = !!universalSpeedCheckbox.checked;
-    const pitchCorrection = !!pitchCorrectionCheckbox.checked;
+    const voiceMode = voiceModeSelect.value || 'normal';
+    // Derive legacy pitchCorrection for content.js backward compat
+    const pitchCorrection = (voiceMode !== 'chipmunk');
 
     // Save universalSpeed to local storage so video-hover.js can read it
     chrome.storage.local.set({ universalSpeed });
@@ -250,7 +328,8 @@ document.addEventListener('DOMContentLoaded', () => {
       rememberSpeed,
       cloudSync,
       loopVideo,
-      pitchCorrection
+      pitchCorrection,
+      voiceMode
     }, () => {
       // Notify content script to apply changes and update speed immediately
       chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
@@ -258,7 +337,7 @@ document.addEventListener('DOMContentLoaded', () => {
           chrome.tabs.sendMessage(tabs[0].id, {
             action: 'updateSettings',
             speed: speed,
-            settings: { hideComments, hideShorts, hideDescription, hideSuggestions, loopVideo, pitchCorrection }
+            settings: { hideComments, hideShorts, hideDescription, hideSuggestions, loopVideo, pitchCorrection, voiceMode }
           }, (response) => {
             if (chrome.runtime.lastError) {
               console.log('Message sending error:', chrome.runtime.lastError.message);
@@ -290,7 +369,10 @@ document.addEventListener('DOMContentLoaded', () => {
   hideDescriptionCheckbox.addEventListener('change', autoSave);
   loopVideoCheckbox.addEventListener('change', autoSave);
   universalSpeedCheckbox.addEventListener('change', autoSave);
-  pitchCorrectionCheckbox.addEventListener('change', autoSave);
+  voiceModeSelect.addEventListener('change', () => {
+    updateVoiceModeDesc(voiceModeSelect.value);
+    autoSave();
+  });
   
   // Cloud sync toggle with migration
   cloudSyncCheckbox.addEventListener('change', async () => {

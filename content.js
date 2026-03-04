@@ -93,6 +93,12 @@
     video.addEventListener('play', () => {
       videoStartTime = Date.now();
       trackVideoStart(videoId);
+      // Re-apply voice mode on every play so the AudioContext resumes
+      // (Chrome suspends AudioContext until a user gesture; play counts as one)
+      chrome.storage.sync.get(['voiceMode', 'pitchCorrection'], ({ voiceMode, pitchCorrection }) => {
+        const mode = voiceMode || (pitchCorrection === false ? 'chipmunk' : 'normal');
+        applyVoiceMode(video, mode);
+      });
     });
     
     video.addEventListener('pause', () => {
@@ -265,8 +271,10 @@
       console.log('Received updateSettings message');
       const videoEl = document.querySelector('video');
       // Apply pitch correction immediately if present
-      if (request.settings && typeof request.settings.pitchCorrection !== 'undefined') {
-        applyPitchCorrection(videoEl, request.settings.pitchCorrection);
+      if (request.settings) {
+        const { voiceMode, pitchCorrection } = request.settings;
+        const mode = voiceMode || (pitchCorrection === false ? 'chipmunk' : 'normal');
+        applyVoiceMode(videoEl, mode);
       }
       // If loopVideo is present in settings, apply immediately
       if (request.settings && typeof request.settings.loopVideo !== 'undefined') {
@@ -455,30 +463,167 @@
   };
 
   // Apply speed settings
-  // Apply pitch correction (preserve pitch when speed changes)
-  function applyPitchCorrection(videoEl, enabled) {
-    if (!videoEl) return;
-    // `preservesPitch` keeps audio pitch locked regardless of playback rate.
-    // When true  → natural-sounding speech/music at any speed.
-    // When false → chipmunk/slow-mo effect follows the rate change.
-    if (typeof videoEl.preservesPitch !== 'undefined') {
-      videoEl.preservesPitch = !!enabled;
+
+  // ─── Voice Mode Audio Engine ─────────────────────────────────────────────────────
+
+  /**
+   * Stores one AudioContext + MediaElementSource per <video> element.
+   * WeakMap ensures old video elements are garbage-collected naturally.
+   */
+  const _audioChains = new WeakMap();
+
+  /**
+   * Returns (or lazily creates) the AudioContext chain for a video element.
+   * createMediaElementSource may only be called ONCE per element — this
+   * ensures we never call it a second time.
+   * @param {HTMLVideoElement} videoEl
+   * @returns {{ ctx: AudioContext, source: MediaElementAudioSourceNode, activeNodes: AudioNode[], oscNodes: OscillatorNode[] }|null}
+   */
+  function getOrCreateAudioChain(videoEl) {
+    if (_audioChains.has(videoEl)) return _audioChains.get(videoEl);
+    try {
+      const ctx = new AudioContext();
+      const source = ctx.createMediaElementSource(videoEl);
+      const chain = { ctx, source, activeNodes: [], oscNodes: [] };
+      _audioChains.set(videoEl, chain);
+      // Automatically resume context on user interaction or video play
+      const resume = () => { if (ctx.state === 'suspended') ctx.resume(); };
+      videoEl.addEventListener('play', resume, { once: false });
+      document.addEventListener('click', resume, { once: true });
+      return chain;
+    } catch (e) {
+      console.warn('[VoiceMode] AudioContext init failed:', e);
+      return null;
     }
-    // Firefox prefix
-    if (typeof videoEl.mozPreservesPitch !== 'undefined') {
-      videoEl.mozPreservesPitch = !!enabled;
+  }
+
+  /**
+   * Disconnects all active effect nodes and stops any oscillators,
+   * leaving the source disconnected so the caller can rewire it.
+   * @param {{ ctx: AudioContext, source: MediaElementAudioSourceNode, activeNodes: AudioNode[], oscNodes: OscillatorNode[] }} chain
+   */
+  function clearChainNodes(chain) {
+    try { chain.source.disconnect(); } catch (_) {}
+    chain.oscNodes.forEach(osc => { try { osc.stop(); } catch (_) {} try { osc.disconnect(); } catch (_) {} });
+    chain.activeNodes.forEach(n => { try { n.disconnect(); } catch (_) {} });
+    chain.activeNodes = [];
+    chain.oscNodes = [];
+  }
+
+  /**
+   * Applies a voice mode to a video element using the Web Audio API and
+   * the browser's native preservesPitch field.
+   *
+   * Modes:
+   *   'normal'    — pitch locked, no DSP effects
+   *   'chipmunk'  — pitch follows playback rate (cartoon high / demon low)
+   *   'bassboost' — low-shelf +10 dB at 200 Hz
+   *   'robot'     — amplitude ring-modulation (30 Hz square oscillator)
+   *   'echo'      — 250 ms delay with 45% feedback
+   *
+   * @param {HTMLVideoElement} videoEl
+   * @param {string} mode
+   */
+  function applyVoiceMode(videoEl, mode) {
+    if (!videoEl) return;
+
+    // — preservesPitch: let pitch track speed for chipmunk only —
+    const preservePitch = (mode !== 'chipmunk');
+    if (typeof videoEl.preservesPitch    !== 'undefined') videoEl.preservesPitch    = preservePitch;
+    if (typeof videoEl.mozPreservesPitch !== 'undefined') videoEl.mozPreservesPitch = preservePitch;
+
+    // Normal — bypass Web Audio entirely; restore default path if chain was built
+    if (mode === 'normal') {
+      if (_audioChains.has(videoEl)) {
+        const chain = _audioChains.get(videoEl);
+        clearChainNodes(chain);
+        chain.source.connect(chain.ctx.destination);
+      }
+      return;
+    }
+
+    // Chipmunk — preservesPitch already set to false above (pitch tracks speed).
+    // Also add a high-shelf treble boost so it sounds squeaky even at 1× speed.
+    if (mode === 'chipmunk') {
+      const chain = getOrCreateAudioChain(videoEl);
+      if (!chain) return;
+      const { ctx, source } = chain;
+      if (ctx.state === 'suspended') ctx.resume();
+      clearChainNodes(chain);
+      const highShelf = ctx.createBiquadFilter();
+      highShelf.type = 'highshelf';
+      highShelf.frequency.value = 2500;
+      highShelf.gain.value = 9;       // +9 dB treble gives the squeaky character
+      source.connect(highShelf);
+      highShelf.connect(ctx.destination);
+      chain.activeNodes = [highShelf];
+      return;
+    }
+
+    // Web Audio modes — create chain on first use
+    const chain = getOrCreateAudioChain(videoEl);
+    if (!chain) return;
+    const { ctx, source } = chain;
+
+    // Ensure the context is running (may be suspended due to autoplay policy)
+    if (ctx.state === 'suspended') ctx.resume();
+
+    clearChainNodes(chain);
+
+    if (mode === 'bassboost') {
+      // Low-shelf boosts bass frequencies
+      const shelf = ctx.createBiquadFilter();
+      shelf.type = 'lowshelf';
+      shelf.frequency.value = 200;
+      shelf.gain.value = 10;
+      source.connect(shelf);
+      shelf.connect(ctx.destination);
+      chain.activeNodes = [shelf];
+
+    } else if (mode === 'robot') {
+      // Ring modulation: a square-wave oscillator amplitude-modulates the source
+      const osc = ctx.createOscillator();
+      osc.type = 'square';
+      osc.frequency.value = 30;
+      const gainNode = ctx.createGain();
+      gainNode.gain.value = 0;      // base gain = 0; osc drives it to ±1
+      source.connect(gainNode);
+      osc.connect(gainNode.gain);   // audio-rate modulation of gain
+      gainNode.connect(ctx.destination);
+      osc.start();
+      chain.activeNodes = [gainNode];
+      chain.oscNodes   = [osc];
+
+    } else if (mode === 'echo') {
+      // Delay + feedback loop, mixed with dry signal
+      const delay    = ctx.createDelay(3.0);
+      delay.delayTime.value = 0.25;
+      const feedback = ctx.createGain();
+      feedback.gain.value = 0.45;
+      const wetGain  = ctx.createGain();
+      wetGain.gain.value = 0.55;
+      // dry
+      source.connect(ctx.destination);
+      // wet with feedback
+      source.connect(delay);
+      delay.connect(feedback);
+      feedback.connect(delay);          // feedback loop
+      delay.connect(wetGain);
+      wetGain.connect(ctx.destination);
+      chain.activeNodes = [delay, feedback, wetGain];
     }
   }
 
   function applySettings() {
     if (manualOverride) return; // Prevent auto-speed adjustment during manual override
 
-    chrome.storage.sync.get(["speed", "rememberSpeed", "pitchCorrection"], ({ speed, rememberSpeed, pitchCorrection }) => {
+    chrome.storage.sync.get(["speed", "rememberSpeed", "voiceMode", "pitchCorrection"], ({ speed, rememberSpeed, voiceMode, pitchCorrection }) => {
       const video = document.querySelector('video');
       if (!video || !speed) return;
 
-      // Apply pitch correction setting (default: true = preserve pitch)
-      applyPitchCorrection(video, pitchCorrection !== false);
+      // Resolve voiceMode (migrate legacy pitchCorrection boolean)
+      const mode = voiceMode || (pitchCorrection === false ? 'chipmunk' : 'normal');
+      applyVoiceMode(video, mode);
 
       // If remember speed per video is enabled, check for video-specific speed
       if (rememberSpeed && storageKey) {
