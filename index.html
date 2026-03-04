@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>YT Enhanced — Advanced Video Extension</title>
+  <meta name="description" content="A powerful Chrome extension for YouTube and beyond. Speed control, voice modes, bookmarks, ad-skip, universal video overlay, and more." />
+  <meta property="og:title" content="YT Enhanced" />
+  <meta property="og:description" content="Advanced video controls for YouTube & every site on the web." />
+  <meta property="og:type" content="website" />
+  <meta name="theme-color" content="#0a0a0a" />
+  <style>
+    /* ── Reset & Variables ───────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0a0a0a;
+      --bg-card:   rgba(255,255,255,0.04);
+      --bg-card-h: rgba(255,255,255,0.07);
+      --border:    rgba(255,255,255,0.08);
+      --border-h:  rgba(255,255,255,0.16);
+      --text:      #f0f0f0;
+      --muted:     rgba(255,255,255,0.45);
+      --accent:    #ffffff;
+      --red:       #c0392b;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: inherit; text-decoration: none; }
+
+    /* ── Nav ─────────────────────────────────────────────── */
+    nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 40px;
+      background: rgba(10,10,10,0.85);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .nav-logo {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      font-weight: 700;
+      font-size: 15px;
+      letter-spacing: 0.01em;
+    }
+
+    .nav-logo-icon {
+      width: 28px; height: 28px;
+      background: var(--red);
+      border-radius: 7px;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 28px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .nav-links a:hover { color: var(--text); }
+
+    .nav-cta {
+      background: #fff;
+      color: #000;
+      border-radius: 7px;
+      padding: 7px 16px;
+      font-size: 13px;
+      font-weight: 600;
+      transition: opacity 0.15s;
+    }
+    .nav-cta:hover { opacity: 0.85; color: #000; }
+
+    /* ── Hero ────────────────────────────────────────────── */
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 120px 24px 80px;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid var(--border);
+      border-radius: 100px;
+      padding: 4px 12px;
+      font-size: 11px;
+      color: var(--muted);
+      margin-bottom: 28px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .hero-badge span {
+      width: 6px; height: 6px;
+      background: #2ecc71;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    h1 {
+      font-size: clamp(36px, 7vw, 72px);
+      font-weight: 800;
+      line-height: 1.08;
+      letter-spacing: -0.03em;
+      margin-bottom: 22px;
+      max-width: 820px;
+    }
+
+    h1 em {
+      font-style: normal;
+      color: var(--muted);
+    }
+
+    .hero-sub {
+      font-size: clamp(15px, 2vw, 18px);
+      color: var(--muted);
+      max-width: 520px;
+      margin-bottom: 40px;
+    }
+
+    .hero-buttons {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .btn-primary {
+      background: #fff;
+      color: #000;
+      border-radius: 9px;
+      padding: 12px 26px;
+      font-size: 14px;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: opacity 0.15s, transform 0.1s;
+      border: 1px solid transparent;
+    }
+    .btn-primary:hover { opacity: 0.88; transform: translateY(-1px); color: #000; }
+
+    .btn-secondary {
+      background: transparent;
+      color: var(--text);
+      border: 1px solid var(--border-h);
+      border-radius: 9px;
+      padding: 12px 26px;
+      font-size: 14px;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: background 0.15s, transform 0.1s;
+    }
+    .btn-secondary:hover { background: var(--bg-card-h); transform: translateY(-1px); }
+
+    /* ── Section Scaffolding ─────────────────────────────── */
+    section {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 80px 24px;
+    }
+
+    .section-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+
+    .section-title {
+      font-size: clamp(26px, 4vw, 42px);
+      font-weight: 800;
+      letter-spacing: -0.025em;
+      line-height: 1.1;
+      margin-bottom: 14px;
+    }
+
+    .section-sub {
+      color: var(--muted);
+      font-size: 15px;
+      max-width: 520px;
+      margin-bottom: 52px;
+    }
+
+    /* ── Feature Grid ────────────────────────────────────── */
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+    }
+
+    .feature-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 24px;
+      transition: background 0.18s, border-color 0.18s, transform 0.15s;
+    }
+    .feature-card:hover {
+      background: var(--bg-card-h);
+      border-color: var(--border-h);
+      transform: translateY(-2px);
+    }
+
+    .feature-icon {
+      width: 38px; height: 38px;
+      background: rgba(255,255,255,0.06);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 16px;
+    }
+
+    .feature-card h3 {
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .feature-card p {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+
+    /* ── Overlay Demo ────────────────────────────────────── */
+    .demo-wrap {
+      margin: 0 auto 0;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
+      background: rgba(255,255,255,0.03);
+      padding: 40px 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .demo-overlay {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 5px 10px;
+      background: rgba(0,0,0,0.72);
+      border-radius: 8px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      user-select: none;
+    }
+
+    .demo-btn {
+      background: none;
+      border: none;
+      color: #fff;
+      width: 20px; height: 20px;
+      border-radius: 50%;
+      cursor: default;
+      font-size: 15px;
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0.9;
+    }
+
+    .demo-label {
+      color: #fff;
+      font-size: 11px;
+      font-weight: 600;
+      min-width: 26px;
+      text-align: center;
+      opacity: 0.9;
+    }
+
+    .demo-sep {
+      width: 1px; height: 12px;
+      background: rgba(255,255,255,0.2);
+    }
+
+    .demo-voice {
+      font-size: 9px;
+      font-weight: 700;
+      color: #fff;
+      background: rgba(255,255,255,0.1);
+      border-radius: 3px;
+      padding: 2px 5px;
+      letter-spacing: 0.02em;
+    }
+
+    .demo-desc {
+      font-size: 13px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    /* ── Install Steps ───────────────────────────────────── */
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+    }
+
+    .step {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 24px;
+    }
+
+    .step-num {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+
+    .step h3 {
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .step p {
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .step code {
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 12px;
+      background: rgba(255,255,255,0.07);
+      border-radius: 4px;
+      padding: 1px 5px;
+    }
+
+    /* ── Footer ──────────────────────────────────────────── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 32px 40px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 16px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .footer-links {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .footer-links a {
+      color: var(--muted);
+      transition: color 0.15s;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .footer-links a:hover { color: var(--text); }
+
+    /* ── Misc ────────────────────────────────────────────── */
+    .divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 0;
+    }
+
+    @media (max-width: 600px) {
+      nav { padding: 12px 20px; }
+      .nav-links { display: none; }
+      footer { flex-direction: column; align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ── Nav ──────────────────────────────────────────────── -->
+  <nav>
+    <div class="nav-logo">
+      <div class="nav-logo-icon">
+        <!-- YouTube-style play icon in red box -->
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="white">
+          <polygon points="5,3 19,12 5,21"></polygon>
+        </svg>
+      </div>
+      YT Enhanced
+    </div>
+    <div class="nav-links">
+      <a href="#features">Features</a>
+      <a href="#overlay">Overlay</a>
+      <a href="#install">Install</a>
+      <a href="https://github.com/mahmudnibir/yt-extension-enhanced" target="_blank">GitHub</a>
+    </div>
+    <a class="nav-cta" href="https://github.com/mahmudnibir/yt-extension-enhanced" target="_blank">
+      Get Extension
+    </a>
+  </nav>
+
+  <!-- ── Hero ─────────────────────────────────────────────── -->
+  <div class="hero">
+    <div class="hero-badge">
+      <span></span>
+      Chrome Extension &nbsp;·&nbsp; Manifest V3 &nbsp;·&nbsp; v2.1
+    </div>
+    <h1>Advanced video controls<br /><em>for the entire web.</em></h1>
+    <p class="hero-sub">
+      Speed control, voice modes, bookmarks, ad-skip, universal hover overlay —
+      everything you never knew was missing from your browser.
+    </p>
+    <div class="hero-buttons">
+      <a class="btn-primary" href="https://github.com/mahmudnibir/yt-extension-enhanced" target="_blank">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path>
+        </svg>
+        View on GitHub
+      </a>
+      <a class="btn-secondary" href="#install">
+        Installation Guide
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
+      </a>
+    </div>
+  </div>
+
+  <hr class="divider" />
+
+  <!-- ── Features ─────────────────────────────────────────── -->
+  <section id="features">
+    <div class="section-label">Features</div>
+    <h2 class="section-title">Everything you need,<br />nothing you don't.</h2>
+    <p class="section-sub">Built for power users who want precise control without complexity.</p>
+
+    <div class="feature-grid">
+
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="5 3 19 12 5 21 5 3"></polygon>
+          </svg>
+        </div>
+        <h3>Speed Control</h3>
+        <p>Dial playback from 0.25× to 20× with a precision slider. Fine-tune with keyboard shortcuts on any page.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+            <line x1="8" y1="21" x2="16" y2="21"></line>
+            <line x1="12" y1="17" x2="12" y2="21"></line>
+          </svg>
+        </div>
+        <h3>Universal Video Overlay</h3>
+        <p>Hover any video on any website to reveal a minimal speed control bar — not just YouTube.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"></path>
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+            <line x1="12" y1="19" x2="12" y2="23"></line>
+            <line x1="8" y1="23" x2="16" y2="23"></line>
+          </svg>
+        </div>
+        <h3>Voice Modes</h3>
+        <p>Five real-time audio DSP modes — Normal, Chipmunk, Bass Boost, Robot, Echo — using the Web Audio API.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+          </svg>
+        </div>
+        <h3>Bookmarks</h3>
+        <p>Timestamp any moment in a video with a label. Cloud-synced across all your Chrome sessions.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line>
+          </svg>
+        </div>
+        <h3>Ad Skip</h3>
+        <p>Automatically detects and skips YouTube ads so you stay in flow without lifting a finger.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+          </svg>
+        </div>
+        <h3>Content Filters</h3>
+        <p>Hide videos by keyword, channel name, or duration threshold — keep your feed clean.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+          </svg>
+        </div>
+        <h3>Watch Statistics</h3>
+        <p>Track total watch time, session history, and productivity broken down by day or week.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="4" width="20" height="16" rx="2" ry="2"></rect>
+            <path d="M8 2v2M16 2v2M2 10h20"></path>
+          </svg>
+        </div>
+        <h3>Keyboard Shortcuts</h3>
+        <p>Fully customizable hotkeys for every control. Record your own key combos directly in the popup.</p>
+      </div>
+
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ── Overlay Demo ──────────────────────────────────────── -->
+  <section id="overlay">
+    <div class="section-label">Universal Overlay</div>
+    <h2 class="section-title">Hover any video.<br />Control everything.</h2>
+    <p class="section-sub">A compact floating bar appears when you hover a video — on any website.</p>
+
+    <div class="demo-wrap">
+      <div style="color: var(--muted); font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase;">Live preview</div>
+      <div class="demo-overlay">
+        <button class="demo-btn">&minus;</button>
+        <span class="demo-label">1&#xD7;</span>
+        <button class="demo-btn">+</button>
+        <div class="demo-sep"></div>
+        <button class="demo-btn" style="opacity:0.5; overflow:visible;">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="1 4 1 10 7 10"></polyline>
+            <path d="M3.51 15a9 9 0 1 0 .49-3.36"></path>
+          </svg>
+        </button>
+        <span class="demo-voice">Nrm</span>
+      </div>
+      <p class="demo-desc">
+        <strong>&minus;</strong> / <strong>+</strong> adjust speed &nbsp;·&nbsp;
+        Loop toggle &nbsp;·&nbsp;
+        <strong>Nrm</strong> cycles voice modes (Normal / Chipmunk / Bass Boost / Robot / Echo)
+      </p>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ── Install ───────────────────────────────────────────── -->
+  <section id="install">
+    <div class="section-label">Installation</div>
+    <h2 class="section-title">Up in four steps.</h2>
+    <p class="section-sub">No Chrome Web Store needed — load it directly from source.</p>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">Step 01</div>
+        <h3>Clone or Download</h3>
+        <p>
+          Grab the repo from GitHub:<br />
+          <code>git clone https://github.com/mahmudnibir/yt-extension-enhanced</code>
+        </p>
+      </div>
+      <div class="step">
+        <div class="step-num">Step 02</div>
+        <h3>Open Extensions</h3>
+        <p>In Chrome, navigate to <code>chrome://extensions</code> and enable <strong>Developer mode</strong> (top-right toggle).</p>
+      </div>
+      <div class="step">
+        <div class="step-num">Step 03</div>
+        <h3>Load Unpacked</h3>
+        <p>Click <strong>Load unpacked</strong> and select the cloned project folder.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">Step 04</div>
+        <h3>Pin &amp; Go</h3>
+        <p>Pin the extension icon to your toolbar. Open YouTube and click the icon to start.</p>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- ── Footer ───────────────────────────────────────────── -->
+  <footer>
+    <span>MIT &copy; 2026 <a href="https://github.com/mahmudnibir" target="_blank" style="color:var(--text);">Mahmud Nibir</a></span>
+    <div class="footer-links">
+      <a href="https://github.com/mahmudnibir/yt-extension-enhanced" target="_blank">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path>
+        </svg>
+        GitHub
+      </a>
+      <a href="https://x.com/mahamud_nibir" target="_blank">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 4l11.733 16h4.267l-11.733-16z"></path>
+          <path d="M4 20l6.768-6.768m2.46-2.46L20 4"></path>
+        </svg>
+        X / Twitter
+      </a>
+      <a href="mailto:nibirbbkr@gmail.com">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+          <polyline points="22,6 12,13 2,6"></polyline>
+        </svg>
+        Email
+      </a>
+    </div>
+  </footer>
+
+</body>
+</html>
