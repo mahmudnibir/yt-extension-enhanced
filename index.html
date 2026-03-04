@@ -1,647 +1,382 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>YT Enhanced — Advanced Video Extension</title>
-  <meta name="description" content="A powerful Chrome extension for YouTube and beyond. Speed control, voice modes, bookmarks, ad-skip, universal video overlay, and more." />
+  <title>YT Enhanced &mdash; Video Controls for the Entire Web</title>
+  <meta name="description" content="Speed control, voice modes, ad-skip, bookmarks, and a universal hover overlay for every video on the web. Free Chrome extension." />
   <meta property="og:title" content="YT Enhanced" />
-  <meta property="og:description" content="Advanced video controls for YouTube & every site on the web." />
+  <meta property="og:description" content="Advanced video controls for YouTube and every site on the web." />
   <meta property="og:type" content="website" />
-  <meta name="theme-color" content="#0a0a0a" />
+  <meta name="theme-color" content="#080808" />
   <style>
-    /* ── Reset & Variables ───────────────────────────────── */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
     :root {
-      --bg:        #0a0a0a;
-      --bg-card:   rgba(255,255,255,0.04);
-      --bg-card-h: rgba(255,255,255,0.07);
-      --border:    rgba(255,255,255,0.08);
-      --border-h:  rgba(255,255,255,0.16);
-      --text:      #f0f0f0;
-      --muted:     rgba(255,255,255,0.45);
-      --accent:    #ffffff;
-      --red:       #c0392b;
+      --bg: #080808; --bg2: #0f0f0f;
+      --card: rgba(255,255,255,0.04); --card-h: rgba(255,255,255,0.07);
+      --border: rgba(255,255,255,0.07); --border-h: rgba(255,255,255,0.14);
+      --text: #efefef; --muted: rgba(255,255,255,0.42);
+      --red: #c0392b; --red-glow: rgba(192,57,43,0.18);
     }
-
     html { scroll-behavior: smooth; }
-
-    body {
-      background: var(--bg);
-      color: var(--text);
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif;
-      line-height: 1.6;
-      -webkit-font-smoothing: antialiased;
-    }
-
+    body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", Helvetica, sans-serif; line-height: 1.6; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
     a { color: inherit; text-decoration: none; }
+    button { cursor: pointer; font-family: inherit; }
 
-    /* ── Nav ─────────────────────────────────────────────── */
-    nav {
-      position: fixed;
-      top: 0; left: 0; right: 0;
-      z-index: 100;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 14px 40px;
-      background: rgba(10,10,10,0.85);
-      backdrop-filter: blur(16px);
-      border-bottom: 1px solid var(--border);
-    }
+    /* NAV */
+    nav { position: fixed; top: 0; left: 0; right: 0; z-index: 200; display: flex; align-items: center; justify-content: space-between; padding: 0 40px; height: 58px; background: rgba(8,8,8,0.82); backdrop-filter: blur(20px); border-bottom: 1px solid var(--border); }
+    .nav-logo { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 14px; letter-spacing: -0.01em; }
+    .nav-logo-mark { width: 26px; height: 26px; border-radius: 7px; background: var(--red); display: flex; align-items: center; justify-content: center; box-shadow: 0 0 16px var(--red-glow); }
+    .nav-center { display: flex; align-items: center; gap: 30px; font-size: 13px; color: var(--muted); }
+    .nav-center a:hover { color: var(--text); transition: color .15s; }
+    .nav-right { display: flex; align-items: center; gap: 10px; }
+    .btn-ghost { font-size: 13px; color: var(--muted); padding: 6px 14px; border: 1px solid var(--border); border-radius: 7px; background: transparent; transition: all .15s; }
+    .btn-ghost:hover { color: var(--text); border-color: var(--border-h); background: var(--card); }
+    .btn-white { font-size: 13px; font-weight: 600; color: #000; padding: 7px 16px; background: #fff; border-radius: 7px; border: none; transition: opacity .15s, transform .1s; display: inline-block; }
+    .btn-white:hover { opacity: 0.88; transform: translateY(-1px); color: #000; }
+    @media (max-width: 640px) { .nav-center { display: none; } nav { padding: 0 20px; } }
 
-    .nav-logo {
-      display: flex;
-      align-items: center;
-      gap: 9px;
-      font-weight: 700;
-      font-size: 15px;
-      letter-spacing: 0.01em;
-    }
+    /* HERO */
+    .hero { position: relative; z-index: 1; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 120px 24px 80px; overflow: hidden; }
+    .hero-glow { position: absolute; top: 35%; left: 50%; transform: translate(-50%,-50%); width: 700px; height: 400px; background: radial-gradient(ellipse, rgba(192,57,43,0.09) 0%, transparent 70%); pointer-events: none; }
+    .hero-eyebrow { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--border-h); border-radius: 100px; padding: 5px 14px; font-size: 11px; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); margin-bottom: 30px; }
+    .dot { width: 6px; height: 6px; border-radius: 50%; background: #2ecc71; box-shadow: 0 0 8px rgba(46,204,113,0.7); animation: blink 2s ease-in-out infinite; display: inline-block; }
+    @keyframes blink { 0%,100% { opacity:1; } 50% { opacity:0.35; } }
+    h1 { font-size: clamp(38px,8vw,80px); font-weight: 800; letter-spacing: -0.04em; line-height: 1.04; max-width: 860px; margin-bottom: 24px; position: relative; z-index: 1; }
+    h1 .dim { color: rgba(255,255,255,0.25); }
+    .hero-sub { font-size: clamp(15px,2vw,18px); color: var(--muted); max-width: 480px; margin-bottom: 44px; line-height: 1.65; position: relative; z-index: 1; }
+    .hero-actions { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; position: relative; z-index: 1; margin-bottom: 60px; }
+    .btn-primary { display: inline-flex; align-items: center; gap: 9px; background: #fff; color: #000; font-size: 14px; font-weight: 700; padding: 13px 26px; border-radius: 10px; border: none; transition: opacity .15s, transform .1s; }
+    .btn-primary:hover { opacity: 0.87; transform: translateY(-2px); color: #000; }
+    .btn-secondary { display: inline-flex; align-items: center; gap: 9px; background: transparent; color: var(--text); font-size: 14px; font-weight: 500; padding: 13px 26px; border-radius: 10px; border: 1px solid var(--border-h); transition: background .15s, transform .1s; }
+    .btn-secondary:hover { background: var(--card-h); transform: translateY(-2px); }
 
-    .nav-logo-icon {
-      width: 28px; height: 28px;
-      background: var(--red);
-      border-radius: 7px;
-      display: flex; align-items: center; justify-content: center;
-    }
+    /* POPUP MOCKUP */
+    .popup-mockup { position: relative; z-index: 1; width: 100%; max-width: 340px; background: #111; border: 1px solid var(--border-h); border-radius: 14px; overflow: hidden; box-shadow: 0 40px 100px rgba(0,0,0,0.75), 0 0 0 1px rgba(255,255,255,0.05); }
+    .pm-topbar { background: #161616; border-bottom: 1px solid var(--border); padding: 10px 14px; display: flex; gap: 2px; }
+    .ptab { font-size: 11px; font-weight: 600; padding: 4px 9px; border-radius: 5px; color: var(--muted); }
+    .ptab.on { background: rgba(255,255,255,0.09); color: #fff; }
+    .pm-body { padding: 10px; display: flex; flex-direction: column; gap: 7px; }
+    .pm-row { background: var(--card); border: 1px solid var(--border); border-radius: 9px; padding: 9px 11px; display: flex; align-items: center; justify-content: space-between; }
+    .pm-title { font-size: 12px; font-weight: 600; }
+    .pm-sub { font-size: 10px; color: var(--muted); margin-top: 1px; }
+    .pm-toggle { width: 34px; height: 19px; border-radius: 10px; background: #2ecc71; position: relative; flex-shrink: 0; }
+    .pm-toggle::after { content: ""; position: absolute; right: 3px; top: 2.5px; width: 14px; height: 14px; border-radius: 50%; background: #fff; }
+    .pm-toggle.off { background: rgba(255,255,255,0.11); }
+    .pm-toggle.off::after { left: 3px; right: auto; }
+    .pm-range { display: flex; align-items: center; gap: 7px; }
+    .pm-range input[type=range] { -webkit-appearance: none; height: 3px; background: linear-gradient(to right,#fff 55%,rgba(255,255,255,0.14) 55%); border-radius: 2px; width: 90px; pointer-events: none; }
+    .pm-range input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; border-radius: 50%; background: #fff; }
+    .pm-val { font-size: 11px; font-weight: 700; min-width: 26px; text-align: right; }
+    .pm-pill { font-size: 10px; color: var(--text); background: rgba(255,255,255,0.07); border: 1px solid var(--border-h); border-radius: 6px; padding: 3px 9px; }
+    .pm-foot { background: #161616; border-top: 1px solid var(--border); padding: 7px 13px; display: flex; align-items: center; justify-content: space-between; font-size: 10px; color: var(--muted); }
 
-    .nav-links {
-      display: flex;
-      align-items: center;
-      gap: 28px;
-      font-size: 13px;
-      color: var(--muted);
-    }
+    /* DIVIDER */
+    hr { border: none; border-top: 1px solid var(--border); }
 
-    .nav-links a:hover { color: var(--text); }
+    /* SECTION */
+    .section { max-width: 1060px; margin: 0 auto; padding: 90px 24px; position: relative; z-index: 1; }
+    .kicker { font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 12px; }
+    .sh { font-size: clamp(28px,4vw,46px); font-weight: 800; letter-spacing: -0.03em; line-height: 1.08; margin-bottom: 16px; }
+    .sh .dim { color: rgba(255,255,255,0.22); }
+    .sc { font-size: 15px; color: var(--muted); max-width: 500px; margin-bottom: 52px; line-height: 1.7; }
 
-    .nav-cta {
-      background: #fff;
-      color: #000;
-      border-radius: 7px;
-      padding: 7px 16px;
-      font-size: 13px;
-      font-weight: 600;
-      transition: opacity 0.15s;
-    }
-    .nav-cta:hover { opacity: 0.85; color: #000; }
+    /* STATS */
+    .stats { display: flex; border: 1px solid var(--border); border-radius: 14px; overflow: hidden; max-width: 700px; margin: 60px auto 0; }
+    .stat { flex: 1; padding: 28px 16px; text-align: center; border-right: 1px solid var(--border); }
+    .stat:last-child { border-right: none; }
+    .sn { font-size: 32px; font-weight: 800; letter-spacing: -0.04em; }
+    .sl { font-size: 12px; color: var(--muted); margin-top: 4px; }
+    @media (max-width: 500px) { .stats { flex-direction: column; } .stat { border-right: none; border-bottom: 1px solid var(--border); } .stat:last-child { border-bottom: none; } }
 
-    /* ── Hero ────────────────────────────────────────────── */
-    .hero {
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
-      padding: 120px 24px 80px;
-    }
+    /* BENTO */
+    .bento { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; }
+    @media (max-width: 860px) { .bento { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 560px) { .bento { grid-template-columns: 1fr; } }
+    .bc { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 26px; transition: background .18s, border-color .18s, transform .15s; overflow: hidden; }
+    .bc:hover { background: var(--card-h); border-color: var(--border-h); transform: translateY(-2px); }
+    .bc.wide { grid-column: span 2; }
+    @media (max-width: 860px) { .bc.wide { grid-column: span 1; } }
+    .bc.featured { background: linear-gradient(135deg,rgba(192,57,43,0.11) 0%,var(--card) 60%); border-color: rgba(192,57,43,0.22); }
+    .bc.featured:hover { border-color: rgba(192,57,43,0.4); }
+    .bci { width: 40px; height: 40px; border-radius: 11px; background: rgba(255,255,255,0.06); display: flex; align-items: center; justify-content: center; margin-bottom: 18px; }
+    .bc h3 { font-size: 15px; font-weight: 700; margin-bottom: 8px; }
+    .bc p { font-size: 13px; color: var(--muted); line-height: 1.6; }
 
-    .hero-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      border: 1px solid var(--border);
-      border-radius: 100px;
-      padding: 4px 12px;
-      font-size: 11px;
-      color: var(--muted);
-      margin-bottom: 28px;
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
-    }
+    /* OVERLAY DEMO */
+    .odemo { border: 1px solid var(--border); border-radius: 18px; overflow: hidden; }
+    .ods { position: relative; height: 190px; background: #0d0d0d; display: flex; align-items: center; justify-content: center; border-bottom: 1px solid var(--border); }
+    .ods-bg { position: absolute; inset: 0; background: repeating-linear-gradient(-45deg,rgba(255,255,255,0.012) 0,rgba(255,255,255,0.012) 1px,transparent 1px,transparent 14px); }
+    .ods-play { width: 46px; height: 46px; border-radius: 50%; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; }
+    .od-bar { position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%); display: inline-flex; align-items: center; gap: 5px; padding: 5px 10px; background: rgba(0,0,0,0.8); border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.5); animation: odIn .4s ease; }
+    @keyframes odIn { from{opacity:0;transform:translateX(-50%) translateY(6px);} to{opacity:1;transform:translateX(-50%) translateY(0);} }
+    .odb { background:none; border:none; color:#fff; font-size:14px; width:22px; height:22px; display:flex; align-items:center; justify-content:center; border-radius:50%; opacity:.9; }
+    .odl { font-size:11px; font-weight:700; color:#fff; min-width:26px; text-align:center; }
+    .ods2 { width:1px; height:12px; background:rgba(255,255,255,0.18); }
+    .odv { font-size:9px; font-weight:700; color:#fff; background:rgba(255,255,255,0.1); border-radius:3px; padding:2px 6px; }
+    .odi { padding: 22px 28px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+    @media (max-width: 560px) { .odi { grid-template-columns: 1fr; } }
+    .odp { font-size: 12px; }
+    .odp strong { display: block; font-weight: 700; margin-bottom: 3px; }
+    .odp span { color: var(--muted); }
 
-    .hero-badge span {
-      width: 6px; height: 6px;
-      background: #2ecc71;
-      border-radius: 50%;
-      display: inline-block;
-    }
+    /* VOICE GRID */
+    .vgrid { display: grid; grid-template-columns: repeat(5,1fr); gap: 10px; }
+    @media (max-width: 700px) { .vgrid { grid-template-columns: repeat(3,1fr); } }
+    @media (max-width: 420px) { .vgrid { grid-template-columns: repeat(2,1fr); } }
+    .vm { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:20px 14px; text-align:center; transition:all .18s; }
+    .vm:hover { background:var(--card-h); border-color:var(--border-h); transform:translateY(-2px); }
+    .vmb { width:38px; height:38px; border-radius:10px; background:rgba(255,255,255,0.06); display:flex; align-items:center; justify-content:center; margin:0 auto 12px; }
+    .vm h4 { font-size:13px; font-weight:700; margin-bottom:5px; }
+    .vm p { font-size:11px; color:var(--muted); line-height:1.5; }
 
-    h1 {
-      font-size: clamp(36px, 7vw, 72px);
-      font-weight: 800;
-      line-height: 1.08;
-      letter-spacing: -0.03em;
-      margin-bottom: 22px;
-      max-width: 820px;
-    }
+    /* INSTALL */
+    .igrid { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; }
+    @media (max-width: 760px) { .igrid { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 440px) { .igrid { grid-template-columns: 1fr; } }
+    .istep { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:22px; }
+    .isn { font-size:11px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:var(--muted); margin-bottom:12px; }
+    .istep h3 { font-size:14px; font-weight:700; margin-bottom:6px; }
+    .istep p { font-size:12px; color:var(--muted); line-height:1.6; }
+    .istep code { font-family:"SF Mono","Fira Code",monospace; font-size:11px; background:rgba(255,255,255,0.07); border-radius:4px; padding:1px 5px; }
 
-    h1 em {
-      font-style: normal;
-      color: var(--muted);
-    }
+    /* CTA */
+    .cta { margin: 0 24px 90px; max-width: 1060px; margin-left: auto; margin-right: auto; background: linear-gradient(135deg,rgba(192,57,43,0.10) 0%,rgba(255,255,255,0.02) 100%); border: 1px solid rgba(192,57,43,0.18); border-radius: 20px; padding: 56px 40px; text-align: center; position: relative; z-index: 1; overflow: hidden; }
+    .cta::before { content:""; position:absolute; top:-60px; left:50%; transform:translateX(-50%); width:500px; height:200px; background:radial-gradient(ellipse,rgba(192,57,43,0.16) 0%,transparent 70%); pointer-events:none; }
+    .cta h2 { font-size: clamp(24px,4vw,40px); font-weight: 800; letter-spacing: -0.03em; margin-bottom: 14px; position: relative; }
+    .cta p { font-size: 15px; color: var(--muted); margin-bottom: 32px; position: relative; }
+    .cta-btns { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; position: relative; }
 
-    .hero-sub {
-      font-size: clamp(15px, 2vw, 18px);
-      color: var(--muted);
-      max-width: 520px;
-      margin-bottom: 40px;
-    }
-
-    .hero-buttons {
-      display: flex;
-      gap: 12px;
-      flex-wrap: wrap;
-      justify-content: center;
-    }
-
-    .btn-primary {
-      background: #fff;
-      color: #000;
-      border-radius: 9px;
-      padding: 12px 26px;
-      font-size: 14px;
-      font-weight: 700;
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      transition: opacity 0.15s, transform 0.1s;
-      border: 1px solid transparent;
-    }
-    .btn-primary:hover { opacity: 0.88; transform: translateY(-1px); color: #000; }
-
-    .btn-secondary {
-      background: transparent;
-      color: var(--text);
-      border: 1px solid var(--border-h);
-      border-radius: 9px;
-      padding: 12px 26px;
-      font-size: 14px;
-      font-weight: 600;
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      transition: background 0.15s, transform 0.1s;
-    }
-    .btn-secondary:hover { background: var(--bg-card-h); transform: translateY(-1px); }
-
-    /* ── Section Scaffolding ─────────────────────────────── */
-    section {
-      max-width: 1080px;
-      margin: 0 auto;
-      padding: 80px 24px;
-    }
-
-    .section-label {
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      color: var(--muted);
-      margin-bottom: 12px;
-    }
-
-    .section-title {
-      font-size: clamp(26px, 4vw, 42px);
-      font-weight: 800;
-      letter-spacing: -0.025em;
-      line-height: 1.1;
-      margin-bottom: 14px;
-    }
-
-    .section-sub {
-      color: var(--muted);
-      font-size: 15px;
-      max-width: 520px;
-      margin-bottom: 52px;
-    }
-
-    /* ── Feature Grid ────────────────────────────────────── */
-    .feature-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 16px;
-    }
-
-    .feature-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 24px;
-      transition: background 0.18s, border-color 0.18s, transform 0.15s;
-    }
-    .feature-card:hover {
-      background: var(--bg-card-h);
-      border-color: var(--border-h);
-      transform: translateY(-2px);
-    }
-
-    .feature-icon {
-      width: 38px; height: 38px;
-      background: rgba(255,255,255,0.06);
-      border-radius: 10px;
-      display: flex; align-items: center; justify-content: center;
-      margin-bottom: 16px;
-    }
-
-    .feature-card h3 {
-      font-size: 14px;
-      font-weight: 700;
-      margin-bottom: 6px;
-    }
-
-    .feature-card p {
-      font-size: 13px;
-      color: var(--muted);
-      line-height: 1.55;
-    }
-
-    /* ── Overlay Demo ────────────────────────────────────── */
-    .demo-wrap {
-      margin: 0 auto 0;
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      overflow: hidden;
-      background: rgba(255,255,255,0.03);
-      padding: 40px 24px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 20px;
-    }
-
-    .demo-overlay {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      padding: 5px 10px;
-      background: rgba(0,0,0,0.72);
-      border-radius: 8px;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      user-select: none;
-    }
-
-    .demo-btn {
-      background: none;
-      border: none;
-      color: #fff;
-      width: 20px; height: 20px;
-      border-radius: 50%;
-      cursor: default;
-      font-size: 15px;
-      display: flex; align-items: center; justify-content: center;
-      opacity: 0.9;
-    }
-
-    .demo-label {
-      color: #fff;
-      font-size: 11px;
-      font-weight: 600;
-      min-width: 26px;
-      text-align: center;
-      opacity: 0.9;
-    }
-
-    .demo-sep {
-      width: 1px; height: 12px;
-      background: rgba(255,255,255,0.2);
-    }
-
-    .demo-voice {
-      font-size: 9px;
-      font-weight: 700;
-      color: #fff;
-      background: rgba(255,255,255,0.1);
-      border-radius: 3px;
-      padding: 2px 5px;
-      letter-spacing: 0.02em;
-    }
-
-    .demo-desc {
-      font-size: 13px;
-      color: var(--muted);
-      text-align: center;
-    }
-
-    /* ── Install Steps ───────────────────────────────────── */
-    .steps {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 16px;
-    }
-
-    .step {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 24px;
-    }
-
-    .step-num {
-      font-size: 11px;
-      font-weight: 700;
-      color: var(--muted);
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      margin-bottom: 10px;
-    }
-
-    .step h3 {
-      font-size: 14px;
-      font-weight: 700;
-      margin-bottom: 6px;
-    }
-
-    .step p {
-      font-size: 13px;
-      color: var(--muted);
-    }
-
-    .step code {
-      font-family: 'SF Mono', 'Fira Code', monospace;
-      font-size: 12px;
-      background: rgba(255,255,255,0.07);
-      border-radius: 4px;
-      padding: 1px 5px;
-    }
-
-    /* ── Footer ──────────────────────────────────────────── */
-    footer {
-      border-top: 1px solid var(--border);
-      padding: 32px 40px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      flex-wrap: wrap;
-      gap: 16px;
-      font-size: 13px;
-      color: var(--muted);
-    }
-
-    .footer-links {
-      display: flex;
-      align-items: center;
-      gap: 20px;
-    }
-
-    .footer-links a {
-      color: var(--muted);
-      transition: color 0.15s;
-      display: flex; align-items: center; gap: 6px;
-    }
-    .footer-links a:hover { color: var(--text); }
-
-    /* ── Misc ────────────────────────────────────────────── */
-    .divider {
-      border: none;
-      border-top: 1px solid var(--border);
-      margin: 0;
-    }
-
-    @media (max-width: 600px) {
-      nav { padding: 12px 20px; }
-      .nav-links { display: none; }
-      footer { flex-direction: column; align-items: flex-start; }
-    }
+    /* FOOTER */
+    footer { border-top: 1px solid var(--border); padding: 28px 40px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; font-size: 12px; color: var(--muted); position: relative; z-index: 1; }
+    .fl { display: flex; align-items: center; gap: 20px; }
+    .fl a { display: flex; align-items: center; gap: 6px; color: var(--muted); transition: color .15s; }
+    .fl a:hover { color: var(--text); }
+    @media (max-width: 560px) { footer { flex-direction: column; align-items: flex-start; } nav { padding: 0 20px; } }
   </style>
 </head>
 <body>
 
-  <!-- ── Nav ──────────────────────────────────────────────── -->
-  <nav>
-    <div class="nav-logo">
-      <div class="nav-logo-icon">
-        <!-- YouTube-style play icon in red box -->
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="white">
-          <polygon points="5,3 19,12 5,21"></polygon>
-        </svg>
-      </div>
-      YT Enhanced
+<nav>
+  <div class="nav-logo">
+    <div class="nav-logo-mark">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="white"><polygon points="5,3 19,12 5,21"/></svg>
     </div>
-    <div class="nav-links">
-      <a href="#features">Features</a>
-      <a href="#overlay">Overlay</a>
-      <a href="#install">Install</a>
-      <a href="https://github.com/mahmudnibir/yt-extension-enhanced" target="_blank">GitHub</a>
-    </div>
-    <a class="nav-cta" href="https://github.com/mahmudnibir/yt-extension-enhanced" target="_blank">
-      Get Extension
-    </a>
-  </nav>
+    YT Enhanced
+  </div>
+  <div class="nav-center">
+    <a href="#features">Features</a>
+    <a href="#overlay">Overlay</a>
+    <a href="#voices">Voice Modes</a>
+    <a href="#install">Install</a>
+  </div>
+  <div class="nav-right">
+    <a href="https://github.com/mahmudnibir/yt-extension-enhanced" target="_blank" class="btn-ghost">GitHub</a>
+    <a href="https://github.com/mahmudnibir/yt-extension-enhanced" target="_blank" class="btn-white">Get Extension</a>
+  </div>
+</nav>
 
-  <!-- ── Hero ─────────────────────────────────────────────── -->
-  <div class="hero">
-    <div class="hero-badge">
-      <span></span>
-      Chrome Extension &nbsp;·&nbsp; Manifest V3 &nbsp;·&nbsp; v3.6.9
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-glow"></div>
+  <div class="hero-eyebrow"><span class="dot"></span> Free &nbsp;&middot;&nbsp; Chrome Extension &nbsp;&middot;&nbsp; v3.6.9</div>
+  <h1>Your browser's video.<br /><span class="dim">Now fully yours.</span></h1>
+  <p class="hero-sub">Speed dial, five audio modes, universal hover controls, auto ad-skip, synced bookmarks &mdash; for YouTube and every video on the web.</p>
+  <div class="hero-actions">
+    <a href="https://github.com/mahmudnibir/yt-extension-enhanced" target="_blank" class="btn-primary">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
+      View on GitHub
+    </a>
+    <a href="#install" class="btn-secondary">How to install <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></a>
+  </div>
+  <div class="popup-mockup">
+    <div class="pm-topbar">
+      <div class="ptab on">Controls</div><div class="ptab">Bookmarks</div><div class="ptab">Stats</div><div class="ptab">Settings</div>
     </div>
-    <h1>Advanced video controls<br /><em>for the entire web.</em></h1>
-    <p class="hero-sub">
-      Speed control, voice modes, bookmarks, ad-skip, universal hover overlay —
-      everything you never knew was missing from your browser.
-    </p>
-    <div class="hero-buttons">
-      <a class="btn-primary" href="https://github.com/mahmudnibir/yt-extension-enhanced" target="_blank">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path>
-        </svg>
-        View on GitHub
-      </a>
-      <a class="btn-secondary" href="#install">
-        Installation Guide
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="6 9 12 15 18 9"></polyline>
-        </svg>
-      </a>
+    <div class="pm-body">
+      <div class="pm-row">
+        <div><div class="pm-title">Playback Speed</div><div class="pm-sub">Fine-tune from 0.25&times; to 20&times;</div></div>
+        <div class="pm-range"><input type="range" min="0" max="100" value="30" /><span class="pm-val">1.0&times;</span></div>
+      </div>
+      <div class="pm-row">
+        <div><div class="pm-title">Auto Ad Skip</div><div class="pm-sub">Dismiss ads instantly</div></div>
+        <div class="pm-toggle"></div>
+      </div>
+      <div class="pm-row">
+        <div><div class="pm-title">Loop Video</div><div class="pm-sub">Repeat on end</div></div>
+        <div class="pm-toggle off"></div>
+      </div>
+      <div class="pm-row">
+        <div><div class="pm-title">Voice Mode</div><div class="pm-sub">Real-time audio DSP</div></div>
+        <div class="pm-pill">Chipmunk</div>
+      </div>
+    </div>
+    <div class="pm-foot">
+      <span>v3.6.9 &nbsp;&#9679;&nbsp; Active</span>
+      <span>Site &nbsp; GitHub &nbsp; X &nbsp; Email</span>
     </div>
   </div>
+</section>
 
-  <hr class="divider" />
+<hr />
 
-  <!-- ── Features ─────────────────────────────────────────── -->
-  <section id="features">
-    <div class="section-label">Features</div>
-    <h2 class="section-title">Everything you need,<br />nothing you don't.</h2>
-    <p class="section-sub">Built for power users who want precise control without complexity.</p>
+<!-- STATS -->
+<div style="max-width:1060px;margin:0 auto;padding:60px 24px 0;position:relative;z-index:1;">
+  <div class="stats">
+    <div class="stat"><div class="sn">8+</div><div class="sl">Core features</div></div>
+    <div class="stat"><div class="sn">5</div><div class="sl">Voice modes</div></div>
+    <div class="stat"><div class="sn">20&times;</div><div class="sl">Max speed</div></div>
+    <div class="stat"><div class="sn">All</div><div class="sl">Sites supported</div></div>
+  </div>
+</div>
 
-    <div class="feature-grid">
-
-      <div class="feature-card">
-        <div class="feature-icon">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polygon points="5 3 19 12 5 21 5 3"></polygon>
-          </svg>
-        </div>
-        <h3>Speed Control</h3>
-        <p>Dial playback from 0.25× to 20× with a precision slider. Fine-tune with keyboard shortcuts on any page.</p>
-      </div>
-
-      <div class="feature-card">
-        <div class="feature-icon">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
-            <line x1="8" y1="21" x2="16" y2="21"></line>
-            <line x1="12" y1="17" x2="12" y2="21"></line>
-          </svg>
-        </div>
-        <h3>Universal Video Overlay</h3>
-        <p>Hover any video on any website to reveal a minimal speed control bar — not just YouTube.</p>
-      </div>
-
-      <div class="feature-card">
-        <div class="feature-icon">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"></path>
-            <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
-            <line x1="12" y1="19" x2="12" y2="23"></line>
-            <line x1="8" y1="23" x2="16" y2="23"></line>
-          </svg>
-        </div>
-        <h3>Voice Modes</h3>
-        <p>Five real-time audio DSP modes — Normal, Chipmunk, Bass Boost, Robot, Echo — using the Web Audio API.</p>
-      </div>
-
-      <div class="feature-card">
-        <div class="feature-icon">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
-          </svg>
-        </div>
-        <h3>Bookmarks</h3>
-        <p>Timestamp any moment in a video with a label. Cloud-synced across all your Chrome sessions.</p>
-      </div>
-
-      <div class="feature-card">
-        <div class="feature-icon">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="10"></circle>
-            <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line>
-          </svg>
-        </div>
-        <h3>Ad Skip</h3>
-        <p>Automatically detects and skips YouTube ads so you stay in flow without lifting a finger.</p>
-      </div>
-
-      <div class="feature-card">
-        <div class="feature-icon">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-          </svg>
-        </div>
-        <h3>Content Filters</h3>
-        <p>Hide videos by keyword, channel name, or duration threshold — keep your feed clean.</p>
-      </div>
-
-      <div class="feature-card">
-        <div class="feature-icon">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
-          </svg>
-        </div>
-        <h3>Watch Statistics</h3>
-        <p>Track total watch time, session history, and productivity broken down by day or week.</p>
-      </div>
-
-      <div class="feature-card">
-        <div class="feature-icon">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="2" y="4" width="20" height="16" rx="2" ry="2"></rect>
-            <path d="M8 2v2M16 2v2M2 10h20"></path>
-          </svg>
-        </div>
-        <h3>Keyboard Shortcuts</h3>
-        <p>Fully customizable hotkeys for every control. Record your own key combos directly in the popup.</p>
-      </div>
-
+<!-- FEATURES -->
+<div class="section" id="features">
+  <div class="kicker">Features</div>
+  <h2 class="sh">Built for the way<br /><span class="dim">you actually watch.</span></h2>
+  <p class="sc">Every control you've wanted but had to live without &mdash; speed, audio DSP, filters, bookmarks, shortcuts. All in one free extension.</p>
+  <div class="bento">
+    <div class="bc featured">
+      <div class="bci"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg></div>
+      <h3>Precision Speed Control</h3>
+      <p>Slide from 0.25&times; to 20&times; with a smooth dial. Fine-step with +/&minus; keyboard shortcuts on any page globally.</p>
     </div>
-  </section>
+    <div class="bc">
+      <div class="bci"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></div>
+      <h3>Universal Hover Overlay</h3>
+      <p>Hover any &lt;video&gt; element on any website. A compact control bar floats over it instantly.</p>
+    </div>
+    <div class="bc">
+      <div class="bci"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg></div>
+      <h3>Auto Ad Skip</h3>
+      <p>YouTube ads are detected and skipped the moment they load. Zero clicks required.</p>
+    </div>
+    <div class="bc">
+      <div class="bci"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg></div>
+      <h3>Cloud Bookmarks</h3>
+      <p>Timestamp any moment with a label. Synced across all your Chrome sessions via the storage API.</p>
+    </div>
+    <div class="bc">
+      <div class="bci"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg></div>
+      <h3>5 Voice Modes</h3>
+      <p>Real-time Web Audio DSP &mdash; Chipmunk, Bass Boost, Robot, Echo, or Normal. Works at any speed.</p>
+    </div>
+    <div class="bc">
+      <div class="bci"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+      <h3>Content Filters</h3>
+      <p>Hide feed videos by keyword, channel, or duration. Keep recommendations intentional.</p>
+    </div>
+    <div class="bc">
+      <div class="bci"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
+      <h3>Watch Statistics</h3>
+      <p>Track total watch time and session history in a live graph broken down by day and week.</p>
+    </div>
+    <div class="bc wide">
+      <div class="bci"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M8 2v2M16 2v2M2 10h20"/></svg></div>
+      <h3>Custom Keyboard Shortcuts</h3>
+      <p>Every control has a fully remappable hotkey. Open the shortcuts tab, click a binding, press your combo. Changes apply instantly without a page refresh.</p>
+    </div>
+  </div>
+</div>
 
-  <hr class="divider" />
+<hr />
 
-  <!-- ── Overlay Demo ──────────────────────────────────────── -->
-  <section id="overlay">
-    <div class="section-label">Universal Overlay</div>
-    <h2 class="section-title">Hover any video.<br />Control everything.</h2>
-    <p class="section-sub">A compact floating bar appears when you hover a video — on any website.</p>
-
-    <div class="demo-wrap">
-      <div style="color: var(--muted); font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase;">Live preview</div>
-      <div class="demo-overlay">
-        <button class="demo-btn">&minus;</button>
-        <span class="demo-label">1&#xD7;</span>
-        <button class="demo-btn">+</button>
-        <div class="demo-sep"></div>
-        <button class="demo-btn" style="opacity:0.5; overflow:visible;">
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="1 4 1 10 7 10"></polyline>
-            <path d="M3.51 15a9 9 0 1 0 .49-3.36"></path>
+<!-- OVERLAY DEMO -->
+<div class="section" id="overlay">
+  <div class="kicker">Universal Overlay</div>
+  <h2 class="sh">Hover any video.<br /><span class="dim">Get instant controls.</span></h2>
+  <p class="sc">A minimal floating bar appears when your cursor enters any video element &mdash; YouTube, Twitter, Reddit, anywhere. No extra setup.</p>
+  <div class="odemo">
+    <div class="ods">
+      <div class="ods-bg"></div>
+      <div class="ods-play"><svg width="18" height="18" viewBox="0 0 24 24" fill="white"><polygon points="5,3 19,12 5,21"/></svg></div>
+      <div class="od-bar">
+        <button class="odb">&minus;</button>
+        <span class="odl">1&#xD7;</span>
+        <button class="odb">+</button>
+        <div class="ods2"></div>
+        <button class="odb" style="opacity:0.5">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="overflow:visible">
+            <polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.36"/>
           </svg>
         </button>
-        <span class="demo-voice">Nrm</span>
-      </div>
-      <p class="demo-desc">
-        <strong>&minus;</strong> / <strong>+</strong> adjust speed &nbsp;·&nbsp;
-        Loop toggle &nbsp;·&nbsp;
-        <strong>Nrm</strong> cycles voice modes (Normal / Chipmunk / Bass Boost / Robot / Echo)
-      </p>
-    </div>
-  </section>
-
-  <hr class="divider" />
-
-  <!-- ── Install ───────────────────────────────────────────── -->
-  <section id="install">
-    <div class="section-label">Installation</div>
-    <h2 class="section-title">Up in four steps.</h2>
-    <p class="section-sub">No Chrome Web Store needed — load it directly from source.</p>
-
-    <div class="steps">
-      <div class="step">
-        <div class="step-num">Step 01</div>
-        <h3>Clone or Download</h3>
-        <p>
-          Grab the repo from GitHub:<br />
-          <code>git clone https://github.com/mahmudnibir/yt-extension-enhanced</code>
-        </p>
-      </div>
-      <div class="step">
-        <div class="step-num">Step 02</div>
-        <h3>Open Extensions</h3>
-        <p>In Chrome, navigate to <code>chrome://extensions</code> and enable <strong>Developer mode</strong> (top-right toggle).</p>
-      </div>
-      <div class="step">
-        <div class="step-num">Step 03</div>
-        <h3>Load Unpacked</h3>
-        <p>Click <strong>Load unpacked</strong> and select the cloned project folder.</p>
-      </div>
-      <div class="step">
-        <div class="step-num">Step 04</div>
-        <h3>Pin &amp; Go</h3>
-        <p>Pin the extension icon to your toolbar. Open YouTube and click the icon to start.</p>
+        <span class="odv">Nrm</span>
       </div>
     </div>
-  </section>
-
-  <hr class="divider" />
-
-  <!-- ── Footer ───────────────────────────────────────────── -->
-  <footer>
-    <span>MIT &copy; 2026 <a href="https://github.com/mahmudnibir" target="_blank" style="color:var(--text);">Mahmud Nibir</a></span>
-    <div class="footer-links">
-      <a href="https://github.com/mahmudnibir/yt-extension-enhanced" target="_blank">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path>
-        </svg>
-        GitHub
-      </a>
-      <a href="https://x.com/mahamud_nibir" target="_blank">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M4 4l11.733 16h4.267l-11.733-16z"></path>
-          <path d="M4 20l6.768-6.768m2.46-2.46L20 4"></path>
-        </svg>
-        X / Twitter
-      </a>
-      <a href="mailto:nibirbbkr@gmail.com">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
-          <polyline points="22,6 12,13 2,6"></polyline>
-        </svg>
-        Email
-      </a>
+    <div class="odi">
+      <div class="odp"><strong>&minus; / + buttons</strong><span>Adjust speed &plusmn;0.25&times; per click. Double-click video to reset to 1&times;.</span></div>
+      <div class="odp"><strong>Loop toggle</strong><span>One click to repeat the video continuously. Highlighted when active.</span></div>
+      <div class="odp"><strong>Nrm badge</strong><span>Click to cycle: Normal &rarr; Chipmunk &rarr; Bass &rarr; Robot &rarr; Echo.</span></div>
     </div>
-  </footer>
+  </div>
+</div>
+
+<hr />
+
+<!-- VOICE MODES -->
+<div class="section" id="voices">
+  <div class="kicker">Web Audio DSP</div>
+  <h2 class="sh">Five ways to hear<br /><span class="dim">your content.</span></h2>
+  <p class="sc">Real-time audio processing applied directly on the media element via the Web Audio API. No quality loss, zero latency spikes.</p>
+  <div class="vgrid">
+    <div class="vm"><div class="vmb"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 8 12 12 14 14"/></svg></div><h4>Normal</h4><p>Clean passthrough. Natural pitch locked at any speed.</p></div>
+    <div class="vm"><div class="vmb"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg></div><h4>Chipmunk</h4><p>High-shelf boost at 2500 Hz. Cartoon-high, classic effect.</p></div>
+    <div class="vm"><div class="vmb"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div><h4>Bass Boost</h4><p>Low-shelf gain at 200 Hz. Deeper, punchier audio.</p></div>
+    <div class="vm"><div class="vmb"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5"/><path d="M8 12h8M12 8v8"/></svg></div><h4>Robot</h4><p>Ring modulation oscillator. Synthetic, robotic texture.</p></div>
+    <div class="vm"><div class="vmb"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3z"/><path d="M3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/></svg></div><h4>Echo</h4><p>Delay node with feedback. Spacious room reverb effect.</p></div>
+  </div>
+</div>
+
+<hr />
+
+<!-- INSTALL -->
+<div class="section" id="install">
+  <div class="kicker">Installation</div>
+  <h2 class="sh">Running in<br /><span class="dim">four steps.</span></h2>
+  <p class="sc">Side-load directly from GitHub &mdash; no Chrome Web Store review wait required.</p>
+  <div class="igrid">
+    <div class="istep"><div class="isn">Step 01</div><h3>Clone the repo</h3><p><code>git clone https://github.com/mahmudnibir/yt-extension-enhanced</code></p></div>
+    <div class="istep"><div class="isn">Step 02</div><h3>Open Extensions</h3><p>Go to <code>chrome://extensions</code> and enable <strong>Developer mode</strong> via the top-right toggle.</p></div>
+    <div class="istep"><div class="isn">Step 03</div><h3>Load Unpacked</h3><p>Click <strong>Load unpacked</strong> and select the cloned project folder.</p></div>
+    <div class="istep"><div class="isn">Step 04</div><h3>Pin &amp; use</h3><p>Pin the icon to your Chrome toolbar. Open YouTube and click the icon to start.</p></div>
+  </div>
+</div>
+
+<hr />
+
+<!-- CTA -->
+<div style="padding:0 0 0;position:relative;z-index:1;">
+  <div class="cta" style="margin-bottom:90px;">
+    <h2>Take control of every video.</h2>
+    <p>Free, open-source, and running in your browser in under two minutes.</p>
+    <div class="cta-btns">
+      <a href="https://github.com/mahmudnibir/yt-extension-enhanced" target="_blank" class="btn-primary">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
+        Get on GitHub
+      </a>
+      <a href="#install" class="btn-secondary">Installation guide</a>
+    </div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <span>MIT &copy; 2026 &nbsp;<a href="https://github.com/mahmudnibir" target="_blank" style="color:var(--text);">Mahmud Nibir</a></span>
+  <div class="fl">
+    <a href="https://github.com/mahmudnibir/yt-extension-enhanced" target="_blank">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
+      GitHub
+    </a>
+    <a href="https://x.com/mahamud_nibir" target="_blank">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4l11.733 16h4.267l-11.733-16z"/><path d="M4 20l6.768-6.768m2.46-2.46L20 4"/></svg>
+      X / Twitter
+    </a>
+    <a href="mailto:nibirbbkr@gmail.com">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+      Email
+    </a>
+  </div>
+</footer>
 
 </body>
 </html>
