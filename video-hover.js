@@ -98,10 +98,14 @@
   // â”€â”€â”€ Listener management â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   function attachListeners() {
     document.addEventListener('mousemove', onMouseMove, true);
+    // Capture-phase scroll listener: repositions the overlay synchronously on
+    // every scroll tick so it never lags behind the page by even one frame.
+    window.addEventListener('scroll', onScroll, { passive: true, capture: true });
   }
 
   function detachListeners() {
     document.removeEventListener('mousemove', onMouseMove, true);
+    window.removeEventListener('scroll', onScroll, { capture: true });
   }
 
   // â”€â”€â”€ Event handlers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -133,6 +137,17 @@
       }
     }
     return best;
+  }
+
+  /**
+   * Fires on every scroll event (capture phase, passive).
+   * Immediately repositions the overlay without waiting for the next rAF tick,
+   * eliminating the 1-frame lag that caused misalignment during scrolling.
+   */
+  function onScroll() {
+    if (activeOverlay && activeOverlay._targetVideo) {
+      positionOverlay(activeOverlay._targetVideo);
+    }
   }
 
   function onMouseMove(e) {
