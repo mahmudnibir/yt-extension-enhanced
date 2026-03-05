@@ -117,7 +117,15 @@
         applyVoiceMode(video, mode);
         // Auto Fullscreen — trigger once per video on first play
         if (autoFullscreen && !autoFullscreenApplied && !document.fullscreenElement) {
-          video.requestFullscreen().catch(() => {});
+          // Use YouTube's own fullscreen button so player controls remain visible
+          const ytFullscreenBtn = document.querySelector('.ytp-fullscreen-button');
+          if (ytFullscreenBtn) {
+            ytFullscreenBtn.click();
+          } else {
+            // Fallback: request fullscreen on the YouTube player container, not raw video
+            const playerEl = document.querySelector('#movie_player') || document.querySelector('.html5-video-player');
+            (playerEl || video).requestFullscreen().catch(() => {});
+          }
           autoFullscreenApplied = true;
         }
       });
@@ -303,8 +311,13 @@
       applyContentControls();
       if (typeof request.speed !== 'undefined') {
         if (videoEl && !isNaN(request.speed)) {
-          videoEl.playbackRate = parseFloat(request.speed);
-          showSpeedOverlay(request.speed);
+          const prevRate = parseFloat(videoEl.playbackRate.toFixed(2));
+          const newRate = parseFloat(parseFloat(request.speed).toFixed(2));
+          videoEl.playbackRate = newRate;
+          // Only show overlay when the speed actually changed (suppress on non-speed toggles)
+          if (prevRate !== newRate) {
+            showSpeedOverlay(request.speed);
+          }
           saveSpeed(request.speed);
         }
       }
@@ -499,12 +512,16 @@
     try {
       const ctx = new AudioContext();
       const source = ctx.createMediaElementSource(videoEl);
-      const chain = { ctx, source, activeNodes: [], oscNodes: [] };
+      // currentMode: track last applied mode to avoid needless chain rebuilds every second
+      const chain = { ctx, source, activeNodes: [], oscNodes: [], currentMode: null };
       _audioChains.set(videoEl, chain);
-      // Automatically resume context on user interaction or video play
+      // Resume on any meaningful page interaction — popup clicks don't satisfy
+      // Chrome's AudioContext user-gesture requirement for the page context.
       const resume = () => { if (ctx.state === 'suspended') ctx.resume(); };
-      videoEl.addEventListener('play', resume, { once: false });
-      document.addEventListener('click', resume, { once: true });
+      videoEl.addEventListener('play',    resume, { once: false });
+      videoEl.addEventListener('playing', resume, { once: false });
+      document.addEventListener('click',  resume, { once: false });
+      document.addEventListener('keydown', resume, { once: false });
       return chain;
     } catch (e) {
       console.warn('[VoiceMode] AudioContext init failed:', e);
@@ -542,8 +559,8 @@
   function applyVoiceMode(videoEl, mode) {
     if (!videoEl) return;
 
-    // — preservesPitch: let pitch track speed for chipmunk only —
-    const preservePitch = (mode !== 'chipmunk');
+    // — preservesPitch: let pitch track speed for modes that benefit from it —
+    const preservePitch = !['chipmunk', 'pikachu', 'doraemon'].includes(mode);
     if (typeof videoEl.preservesPitch    !== 'undefined') videoEl.preservesPitch    = preservePitch;
     if (typeof videoEl.mozPreservesPitch !== 'undefined') videoEl.mozPreservesPitch = preservePitch;
 
@@ -551,27 +568,11 @@
     if (mode === 'normal') {
       if (_audioChains.has(videoEl)) {
         const chain = _audioChains.get(videoEl);
+        if (chain.currentMode === 'normal') return; // already bypassed, nothing to do
         clearChainNodes(chain);
         chain.source.connect(chain.ctx.destination);
+        chain.currentMode = 'normal';
       }
-      return;
-    }
-
-    // Chipmunk — preservesPitch already set to false above (pitch tracks speed).
-    // Also add a high-shelf treble boost so it sounds squeaky even at 1× speed.
-    if (mode === 'chipmunk') {
-      const chain = getOrCreateAudioChain(videoEl);
-      if (!chain) return;
-      const { ctx, source } = chain;
-      if (ctx.state === 'suspended') ctx.resume();
-      clearChainNodes(chain);
-      const highShelf = ctx.createBiquadFilter();
-      highShelf.type = 'highshelf';
-      highShelf.frequency.value = 2500;
-      highShelf.gain.value = 9;       // +9 dB treble gives the squeaky character
-      source.connect(highShelf);
-      highShelf.connect(ctx.destination);
-      chain.activeNodes = [highShelf];
       return;
     }
 
@@ -580,10 +581,147 @@
     if (!chain) return;
     const { ctx, source } = chain;
 
-    // Ensure the context is running (may be suspended due to autoplay policy)
+    // Ensure the AudioContext is running. Chrome suspends it until a page-level
+    // user gesture; calling resume() here covers the case where the video.play
+    // event already fired before the chain was wired.
     if (ctx.state === 'suspended') ctx.resume();
 
+    // Skip full teardown + rewire when the mode hasn't changed — this prevents
+    // the chain from going silent every second when applySettings() runs.
+    if (chain.currentMode === mode) return;
+
     clearChainNodes(chain);
+    chain.currentMode = mode;
+
+    // Chipmunk — preservesPitch=false lets pitch track speed.
+    // 3-band EQ gives a perceptible squeaky character even at 1× speed:
+    //   • Cut bass (-8 dB @ 280 Hz)  — removes voice body/weight
+    //   • Boost formant (+8 dB @ 1400 Hz) — lifts nasal/vowel region
+    //   • Boost treble (+10 dB @ 3000 Hz) — adds squeak
+    if (mode === 'chipmunk') {
+      const lowCut   = ctx.createBiquadFilter();
+      lowCut.type    = 'lowshelf';
+      lowCut.frequency.value = 280;
+      lowCut.gain.value      = -8;
+      const midPeak  = ctx.createBiquadFilter();
+      midPeak.type   = 'peaking';
+      midPeak.frequency.value = 1400;
+      midPeak.Q.value         = 0.9;
+      midPeak.gain.value      = 8;
+      const highShelf = ctx.createBiquadFilter();
+      highShelf.type  = 'highshelf';
+      highShelf.frequency.value = 3000;
+      highShelf.gain.value      = 10;
+      source.connect(lowCut);
+      lowCut.connect(midPeak);
+      midPeak.connect(highShelf);
+      highShelf.connect(ctx.destination);
+      chain.activeNodes = [lowCut, midPeak, highShelf];
+      return;
+    }
+
+    // Pikachu — electric, bright, squeaky character even at 1× speed:
+    //   • Hard highpass @ 320 Hz — strips all bass/body
+    //   • +11 dB peak @ 1800 Hz  — "pika" bright vowel formant
+    //   • +13 dB highshelf @ 4500 Hz — electric air/sparkle
+    if (mode === 'pikachu') {
+      const hpf = ctx.createBiquadFilter();
+      hpf.type = 'highpass';
+      hpf.frequency.value = 320;
+      hpf.Q.value = 0.7;
+      const formant = ctx.createBiquadFilter();
+      formant.type = 'peaking';
+      formant.frequency.value = 1800;
+      formant.Q.value = 0.8;
+      formant.gain.value = 11;
+      const air = ctx.createBiquadFilter();
+      air.type = 'highshelf';
+      air.frequency.value = 4500;
+      air.gain.value = 13;
+      source.connect(hpf);
+      hpf.connect(formant);
+      formant.connect(air);
+      air.connect(ctx.destination);
+      chain.activeNodes = [hpf, formant, air];
+      return;
+    }
+
+    // Naruto — energetic, shouty, slightly gritty:
+    //   • Soft-clip WaveShaper (amount=15) — adds harmonic grit/energy
+    //   • −5 dB lowshelf @ 150 Hz — less mud
+    //   • +8 dB peak @ 2800 Hz, Q=1.2 — vocal presence / shout
+    //   • +5 dB highshelf @ 6000 Hz — open air
+    if (mode === 'naruto') {
+      const makeClipCurve = (amount) => {
+        const n = 256, curve = new Float32Array(n), deg = Math.PI / 180;
+        for (let i = 0; i < n; i++) {
+          const x = (i * 2) / n - 1;
+          curve[i] = ((3 + amount) * x * 20 * deg) / (Math.PI + amount * Math.abs(x));
+        }
+        return curve;
+      };
+      const shaper = ctx.createWaveShaper();
+      shaper.curve = makeClipCurve(15);
+      shaper.oversample = '2x';
+      const lowCut = ctx.createBiquadFilter();
+      lowCut.type = 'lowshelf';
+      lowCut.frequency.value = 150;
+      lowCut.gain.value = -5;
+      const presence = ctx.createBiquadFilter();
+      presence.type = 'peaking';
+      presence.frequency.value = 2800;
+      presence.Q.value = 1.2;
+      presence.gain.value = 8;
+      const airShelf = ctx.createBiquadFilter();
+      airShelf.type = 'highshelf';
+      airShelf.frequency.value = 6000;
+      airShelf.gain.value = 5;
+      source.connect(shaper);
+      shaper.connect(lowCut);
+      lowCut.connect(presence);
+      presence.connect(airShelf);
+      airShelf.connect(ctx.destination);
+      chain.activeNodes = [shaper, lowCut, presence, airShelf];
+      return;
+    }
+
+    // Doraemon — nasal toy-robot with warm flutter:
+    //   • Highpass @ 400 Hz — removes bass weight
+    //   • +12 dB peak @ 1100 Hz, Q=1.5 — nasal resonance (signature quality)
+    //   • +7 dB highshelf @ 3200 Hz — bright toy-robot tone
+    //   • 80 Hz ring-mod (slower than Robot's 30 Hz) — warm, cartoon flutter
+    if (mode === 'doraemon') {
+      const hpf = ctx.createBiquadFilter();
+      hpf.type = 'highpass';
+      hpf.frequency.value = 400;
+      hpf.Q.value = 0.7;
+      const nasal = ctx.createBiquadFilter();
+      nasal.type = 'peaking';
+      nasal.frequency.value = 1100;
+      nasal.Q.value = 1.5;
+      nasal.gain.value = 12;
+      const bright = ctx.createBiquadFilter();
+      bright.type = 'highshelf';
+      bright.frequency.value = 3200;
+      bright.gain.value = 7;
+      // Ring modulation at 80 Hz — produces characteristic "dora" warble
+      const ringGain = ctx.createGain();
+      ringGain.gain.value = 0;
+      const osc = ctx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.value = 80;
+      // EQ chain feeds into ring-mod gain node
+      hpf.connect(nasal);
+      nasal.connect(bright);
+      bright.connect(ringGain);
+      source.connect(hpf);
+      osc.connect(ringGain.gain);
+      ringGain.connect(ctx.destination);
+      osc.start();
+      chain.activeNodes = [hpf, nasal, bright, ringGain];
+      chain.oscNodes = [osc];
+      return;
+    }
 
     if (mode === 'bassboost') {
       // Low-shelf boosts bass frequencies

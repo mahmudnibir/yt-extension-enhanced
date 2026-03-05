@@ -250,6 +250,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const VOICE_DESCS = {
     normal:    'Natural pitch at any playback speed',
     chipmunk:  'Pitch follows speed — cartoon high, demon low',
+    pikachu:   'Bright electric squeak — cut bass, boost formant & air',
+    naruto:    'Energetic grit with vocal presence boost',
+    doraemon:  'Nasal toy-robot resonance with warm flutter',
     bassboost: 'Warm bass boost on the audio output',
     robot:     'Robotic ring-modulation effect',
     echo:      'Echoing reverb with feedback delay',
