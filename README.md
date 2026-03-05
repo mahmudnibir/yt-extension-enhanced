@@ -4,6 +4,8 @@
 
 **Version** 3.6.9 &nbsp;·&nbsp; **Manifest** V3 &nbsp;·&nbsp; **Author** [Mahmud Nibir](https://github.com/mahmudnibir)
 
+[![Hits](https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2Fmahmudnibir%2Fyt-extension-enhanced&count_bg=%23000000&title_bg=%23333333&icon=github.svg&icon_color=%23FFFFFF&title=Unique+Views&edge_flat=true)](https://hits.seeyoufarm.com)
+
 ---
 
 ## Features
