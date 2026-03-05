@@ -2,7 +2,7 @@
 
 > Advanced YouTube browser extension for power users.
 
-**Version** 3.7.0 &nbsp;·&nbsp; **Manifest** V3 &nbsp;·&nbsp; **Author** [Mahmud Nibir](https://github.com/mahmudnibir)
+**Version** 3.8.0 &nbsp;·&nbsp; **Manifest** V3 &nbsp;·&nbsp; **Author** [Mahmud Nibir](https://github.com/mahmudnibir)
 
 ![Views](https://visitor-badge.laobi.icu/badge?page_id=mahmudnibir.yt-extension-enhanced)
 
@@ -25,7 +25,7 @@
 | Auto Subtitles | Automatically enable closed captions on video load |
 | Watch Statistics | Track total watch time and session history with a reset option |
 | Keyboard Shortcuts | Fully customizable hotkeys for all controls |
-| Voice Modes | 5 real-time audio modes: Normal, Chipmunk, Bass Boost, Robot, Echo |
+| Voice Modes | 8 real-time audio modes: Normal, Chipmunk, Pikachu, Naruto, Doraemon, Bass Boost, Robot, Echo |
 
 ---
 
