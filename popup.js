@@ -188,6 +188,17 @@ document.addEventListener('DOMContentLoaded', () => {
   const loopVideoCheckbox = document.getElementById('loopVideo');
   const universalSpeedCheckbox = document.getElementById('universalSpeed');
   const voiceModeDesc = document.getElementById('voiceModeDesc');
+  const defaultVolumeEnabledCheckbox = document.getElementById('defaultVolumeEnabled');
+  const defaultVolumeInput = document.getElementById('defaultVolume');
+  const defaultVolumeDisplay = document.getElementById('defaultVolumeDisplay');
+  const autoTheaterCheckbox = document.getElementById('autoTheater');
+  const autoFullscreenCheckbox = document.getElementById('autoFullscreen');
+  const autoSubtitlesCheckbox = document.getElementById('autoSubtitles');
+  const focusModeCheckbox = document.getElementById('focusMode');
+  const resetStatsBtn = document.getElementById('resetStatsBtn');
+  const exportBookmarksBtn = document.getElementById('exportBookmarksBtn');
+  const importBookmarksBtn = document.getElementById('importBookmarksBtn');
+  const importBookmarksFile = document.getElementById('importBookmarksFile');
 
   /**
    * Builds a select-like proxy object around the custom div dropdown.
@@ -260,6 +271,12 @@ document.addEventListener('DOMContentLoaded', () => {
     cloudSync: true,
     loopVideo: false,
     voiceMode: 'normal',
+    defaultVolume: 80,
+    defaultVolumeEnabled: false,
+    autoTheater: false,
+    autoFullscreen: false,
+    autoSubtitles: false,
+    focusMode: false,
   };
 
   // Update speed display with enhanced formatting
@@ -285,16 +302,23 @@ document.addEventListener('DOMContentLoaded', () => {
     updateVoiceModeDesc(mode);
     updateCloudSyncDesc(data.cloudSync !== false);
 
+    // Load new automation / playback settings
+    defaultVolumeEnabledCheckbox.checked = data.defaultVolumeEnabled || false;
+    defaultVolumeInput.value = data.defaultVolume !== undefined ? data.defaultVolume : 80;
+    defaultVolumeDisplay.textContent = `${defaultVolumeInput.value}%`;
+    autoTheaterCheckbox.checked = data.autoTheater || false;
+    autoFullscreenCheckbox.checked = data.autoFullscreen || false;
+    autoSubtitlesCheckbox.checked = data.autoSubtitles || false;
+    focusModeCheckbox.checked = data.focusMode || false;
+
     // Load universalSpeed from local storage (used by video-hover.js)
     chrome.storage.local.get(['universalSpeed'], (localData) => {
       universalSpeedCheckbox.checked = !!localData.universalSpeed;
     });
     updateSpeedDisplay(data.speed);
-    
-    // Animate elements in
-    document.querySelectorAll('.control-group').forEach((group, index) => {
-      group.style.animationDelay = `${index * 0.1}s`;
-    });
+
+    // Sync active preset button highlight
+    syncPresetButtons(parseFloat(data.speed));
   });
 
   // Auto-save function
@@ -314,6 +338,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const voiceMode = voiceModeSelect.value || 'normal';
     // Derive legacy pitchCorrection for content.js backward compat
     const pitchCorrection = (voiceMode !== 'chipmunk');
+    const defaultVolume = parseInt(defaultVolumeInput.value, 10);
+    const defaultVolumeEnabled = !!defaultVolumeEnabledCheckbox.checked;
+    const autoTheater = !!autoTheaterCheckbox.checked;
+    const autoFullscreen = !!autoFullscreenCheckbox.checked;
+    const autoSubtitles = !!autoSubtitlesCheckbox.checked;
+    const focusMode = !!focusModeCheckbox.checked;
 
     // Save universalSpeed to local storage so video-hover.js can read it
     chrome.storage.local.set({ universalSpeed });
@@ -329,7 +359,13 @@ document.addEventListener('DOMContentLoaded', () => {
       cloudSync,
       loopVideo,
       pitchCorrection,
-      voiceMode
+      voiceMode,
+      defaultVolume,
+      defaultVolumeEnabled,
+      autoTheater,
+      autoFullscreen,
+      autoSubtitles,
+      focusMode,
     }, () => {
       // Notify content script to apply changes and update speed immediately
       chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
@@ -337,12 +373,10 @@ document.addEventListener('DOMContentLoaded', () => {
           chrome.tabs.sendMessage(tabs[0].id, {
             action: 'updateSettings',
             speed: speed,
-            settings: { hideComments, hideShorts, hideDescription, hideSuggestions, loopVideo, pitchCorrection, voiceMode }
+            settings: { hideComments, hideShorts, hideDescription, hideSuggestions, loopVideo, pitchCorrection, voiceMode, defaultVolume, defaultVolumeEnabled, autoTheater, autoFullscreen, autoSubtitles, focusMode }
           }, (response) => {
             if (chrome.runtime.lastError) {
-              console.log('Message sending error:', chrome.runtime.lastError.message);
-            } else {
-              console.log('Settings and speed applied successfully');
+              // content script not yet injected or tab navigated away — safe to ignore
             }
           });
         }
@@ -357,6 +391,8 @@ document.addEventListener('DOMContentLoaded', () => {
     setTimeout(() => {
       speedDisplay.style.transform = 'scale(1)';
     }, 150);
+    // Deactivate preset buttons when user drags the slider manually
+    syncPresetButtons(parseFloat(e.target.value));
     autoSave();
   });
 
@@ -373,6 +409,89 @@ document.addEventListener('DOMContentLoaded', () => {
     updateVoiceModeDesc(voiceModeSelect.value);
     autoSave();
   });
+
+  // New feature event listeners
+  defaultVolumeEnabledCheckbox.addEventListener('change', autoSave);
+  defaultVolumeInput.addEventListener('input', () => {
+    defaultVolumeDisplay.textContent = `${defaultVolumeInput.value}%`;
+    autoSave();
+  });
+  autoTheaterCheckbox.addEventListener('change', autoSave);
+  autoFullscreenCheckbox.addEventListener('change', autoSave);
+  autoSubtitlesCheckbox.addEventListener('change', autoSave);
+  focusModeCheckbox.addEventListener('change', autoSave);
+
+  // Speed preset buttons
+  function syncPresetButtons(speed) {
+    document.querySelectorAll('.btn-preset').forEach(btn => {
+      btn.classList.toggle('active', parseFloat(btn.dataset.speed) === speed);
+    });
+  }
+  document.querySelectorAll('.btn-preset').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const preset = parseFloat(btn.dataset.speed);
+      speedInput.value = preset;
+      updateSpeedDisplay(preset);
+      syncPresetButtons(preset);
+      autoSave();
+    });
+  });
+
+  // Export Bookmarks button (Advanced tab)
+  if (exportBookmarksBtn) {
+    exportBookmarksBtn.addEventListener('click', () => exportBookmarks());
+  }
+
+  // Import Bookmarks button
+  if (importBookmarksBtn && importBookmarksFile) {
+    importBookmarksBtn.addEventListener('click', () => importBookmarksFile.click());
+    importBookmarksFile.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        try {
+          const data = JSON.parse(ev.target.result);
+          // Accept both full export format and raw bookmark objects
+          const bookmarkData = data.bookmarks || {};
+          const keys = Object.keys(bookmarkData).filter(k => k.startsWith('yt_bm_'));
+          if (keys.length === 0) {
+            alert('No bookmarks found in this file.');
+            return;
+          }
+          chrome.storage.sync.get(['cloudSync'], (result) => {
+            const useCloudSync = result.cloudSync !== false;
+            const storage = useCloudSync ? chrome.storage.sync : chrome.storage.local;
+            const toStore = {};
+            keys.forEach(k => { toStore[k] = bookmarkData[k]; });
+            storage.set(toStore, () => {
+              if (chrome.runtime.lastError) {
+                alert(`Import failed: ${chrome.runtime.lastError.message}`);
+              } else {
+                alert(`✅ Imported ${keys.length} video(s) of bookmarks successfully!`);
+              }
+            });
+          });
+        } catch {
+          alert('Invalid backup file. Please select a valid YT Enhanced backup JSON.');
+        }
+        // Reset input so the same file can be re-selected
+        importBookmarksFile.value = '';
+      };
+      reader.readAsText(file);
+    });
+  }
+
+  // Reset Statistics button
+  if (resetStatsBtn) {
+    resetStatsBtn.addEventListener('click', () => {
+      if (!confirm('Reset all watch statistics? Bookmarks and settings will not be affected.')) return;
+      chrome.storage.local.remove(['statistics'], () => {
+        loadStatistics();
+        alert('✅ Statistics reset successfully.');
+      });
+    });
+  }
   
   // Cloud sync toggle with migration
   cloudSyncCheckbox.addEventListener('change', async () => {
@@ -434,17 +553,6 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     });
   }
-
-  // Add hover effects for interactive elements
-  document.querySelectorAll('.control-group').forEach(group => {
-    group.addEventListener('mouseenter', () => {
-      group.style.transform = 'translateY(-2px)';
-    });
-    
-    group.addEventListener('mouseleave', () => {
-      group.style.transform = 'translateY(0)';
-    });
-  });
 
   // Default shortcuts
   const defaultShortcuts = {

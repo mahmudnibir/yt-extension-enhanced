@@ -2,7 +2,7 @@
 
 > Advanced YouTube browser extension for power users.
 
-**Version** 3.6.9 &nbsp;·&nbsp; **Manifest** V3 &nbsp;·&nbsp; **Author** [Mahmud Nibir](https://github.com/mahmudnibir)
+**Version** 3.7.0 &nbsp;·&nbsp; **Manifest** V3 &nbsp;·&nbsp; **Author** [Mahmud Nibir](https://github.com/mahmudnibir)
 
 ![Views](https://visitor-badge.laobi.icu/badge?page_id=mahmudnibir.yt-extension-enhanced)
 
@@ -13,12 +13,19 @@
 | Feature | Description |
 |---|---|
 | Speed Control | Playback speed from 0.25× to 20× via slider |
+| Speed Presets | Quick-access 1.25×, 1.5×, 1.75×, 2× buttons in the Advanced tab |
 | Universal Video Speed | Hover overlay on **any** video across the entire web — toggle in settings |
-| Bookmarks | Cloud-synced video timestamps with labels |
+| Bookmarks | Cloud-synced video timestamps with labels, import & export as JSON |
 | Ad Skip | Automatically skips YouTube advertisements |
-| Content Filters | Filter videos by keyword, channel, or duration |
-| Watch Statistics | Track total watch time and session history |
+| Content Filters | Hide comments, shorts, description, or suggested videos |
+| Focus Mode | Hides the sidebar navigation while watching to reduce distractions |
+| Auto Theater Mode | Automatically switches to theater view on video load |
+| Auto Fullscreen | Automatically enters fullscreen when playback starts |
+| Default Volume | Enforce a set volume level on every video load |
+| Auto Subtitles | Automatically enable closed captions on video load |
+| Watch Statistics | Track total watch time and session history with a reset option |
 | Keyboard Shortcuts | Fully customizable hotkeys for all controls |
+| Voice Modes | 5 real-time audio modes: Normal, Chipmunk, Bass Boost, Robot, Echo |
 
 ---
 
@@ -43,7 +50,7 @@
 
 ## Usage
 
-Click the extension icon on any `youtube.com` page to open the control panel. All settings persist across sessions via Chrome's sync storage.
+Click the extension icon on any `youtube.com` page to open the control panel. All settings persist across sessions via Chrome's sync storage. The **Advanced** tab contains automation toggles (theater, fullscreen, subtitles, focus mode), playback presets, bookmark import/export, and statistics management.
 
 ---
 

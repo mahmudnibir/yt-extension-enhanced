@@ -7,6 +7,11 @@
   let manualOverride = false;
   let overrideTimeout;
   let deletedBookmarks = [];
+
+  // Per-video one-shot flags — reset each time init() finds a new video
+  let theaterApplied = false;
+  let subtitlesApplied = false;
+  let autoFullscreenApplied = false;
   
   // Time saved tracking
   let totalTimeSaved = 0;
@@ -59,12 +64,24 @@
     if (!videoId) return;
     storageKey = `yt_bm_${videoId}`;
 
+    // Reset one-shot flags for this video
+    theaterApplied = false;
+    subtitlesApplied = false;
+    autoFullscreenApplied = false;
+
     getBookmarkStorage((storage) => {
       storage.get([storageKey], (res) => {
         bookmarks = Array.isArray(res[storageKey]) ? res[storageKey] : [];
         bookmarks.sort((a, b) => a.time - b.time);
         bookmarks.forEach(bm => addBookmarkMarker(bm.time, bm.label));
       });
+    });
+
+    // Apply default volume once on initial video load
+    chrome.storage.sync.get(['defaultVolume', 'defaultVolumeEnabled'], (data) => {
+      if (data.defaultVolumeEnabled && video) {
+        video.volume = Math.max(0, Math.min(1, (data.defaultVolume || 80) / 100));
+      }
     });
 
     document.addEventListener("keydown", handleKeyPress);
@@ -95,9 +112,14 @@
       trackVideoStart(videoId);
       // Re-apply voice mode on every play so the AudioContext resumes
       // (Chrome suspends AudioContext until a user gesture; play counts as one)
-      chrome.storage.sync.get(['voiceMode', 'pitchCorrection'], ({ voiceMode, pitchCorrection }) => {
+      chrome.storage.sync.get(['voiceMode', 'pitchCorrection', 'autoFullscreen'], ({ voiceMode, pitchCorrection, autoFullscreen }) => {
         const mode = voiceMode || (pitchCorrection === false ? 'chipmunk' : 'normal');
         applyVoiceMode(video, mode);
+        // Auto Fullscreen — trigger once per video on first play
+        if (autoFullscreen && !autoFullscreenApplied && !document.fullscreenElement) {
+          video.requestFullscreen().catch(() => {});
+          autoFullscreenApplied = true;
+        }
       });
     });
     
@@ -116,7 +138,6 @@
   // Function to hide/show content based on settings
   function applyContentControls() {
     chrome.storage.sync.get(['hideComments', 'hideShorts', 'hideDescription', 'hideSuggestions', 'loopVideo'], (data) => {
-      console.log('Applying content controls:', data);
       // Hide comments
       if (data.hideComments) {
         hideComments();
@@ -164,14 +185,12 @@
     if (!document.getElementById('yt-hide-comments-style')) {
       document.head.appendChild(style);
     }
-    console.log('Comments hidden');
   }
   
   function showComments() {
     const style = document.getElementById('yt-hide-comments-style');
     if (style) {
       style.remove();
-      console.log('Comments shown');
     }
   }
   
@@ -194,14 +213,12 @@
     if (!document.getElementById('yt-hide-shorts-style')) {
       document.head.appendChild(style);
     }
-    console.log('Shorts hidden');
   }
   
   function showShorts() {
     const style = document.getElementById('yt-hide-shorts-style');
     if (style) {
       style.remove();
-      console.log('Shorts shown');
     }
   }
   
@@ -222,14 +239,12 @@
     if (!document.getElementById('yt-hide-description-style')) {
       document.head.appendChild(style);
     }
-    console.log('Description hidden');
   }
   
   function showDescription() {
     const style = document.getElementById('yt-hide-description-style');
     if (style) {
       style.remove();
-      console.log('Description shown');
     }
   }
   
@@ -254,21 +269,18 @@
     if (!document.getElementById('yt-hide-suggestions-style')) {
       document.head.appendChild(style);
     }
-    console.log('Suggestions hidden');
   }
   
   function showSuggestions() {
     const style = document.getElementById('yt-hide-suggestions-style');
     if (style) {
       style.remove();
-      console.log('Suggestions shown');
     }
   }
   
   // Listen for messages from popup
   chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === 'updateSettings') {
-      console.log('Received updateSettings message');
       const videoEl = document.querySelector('video');
       // Apply pitch correction immediately if present
       if (request.settings) {
@@ -279,6 +291,14 @@
       // If loopVideo is present in settings, apply immediately
       if (request.settings && typeof request.settings.loopVideo !== 'undefined') {
         if (videoEl) videoEl.loop = !!request.settings.loopVideo;
+      }
+      // Apply focusMode immediately so the CSS injection is instant on toggle
+      if (request.settings && typeof request.settings.focusMode !== 'undefined') {
+        if (request.settings.focusMode) {
+          applyFocusMode();
+        } else {
+          removeFocusMode();
+        }
       }
       applyContentControls();
       if (typeof request.speed !== 'undefined') {
@@ -291,7 +311,6 @@
       sendResponse({success: true});
     }
     if (request.action === 'updateShortcuts') {
-      console.log('Received updateShortcuts message', request.shortcuts);
       shortcuts = { ...shortcuts, ...request.shortcuts };
       sendResponse({success: true});
     }
@@ -415,7 +434,6 @@
     if (e.altKey && /^[1-9]$/.test(e.key)) {
       const speed = parseFloat(e.key);
       video.playbackRate = speed;
-      console.log(`Manual: Playback speed set to ${speed}x`);
       showSpeedOverlay(speed);
       saveSpeed(speed);
 
@@ -435,7 +453,6 @@
       video.playbackRate = newSpeed;
       showSpeedOverlay(newSpeed);
       saveSpeed(newSpeed);
-      console.log(`Speed increased to ${newSpeed}x`);
       return;
     }
 
@@ -447,7 +464,6 @@
       video.playbackRate = newSpeed;
       showSpeedOverlay(newSpeed);
       saveSpeed(newSpeed);
-      console.log(`Speed decreased to ${newSpeed}x`);
       return;
     }
 
@@ -456,7 +472,6 @@
       const overlay = document.getElementById('yt-remaining-time');
       if (overlay) {
         overlay.style.display = overlay.style.display === 'none' ? 'block' : 'none';
-        console.log('⏳ Remaining time overlay toggled');
       }
       return;
     }
@@ -617,13 +632,63 @@
   function applySettings() {
     if (manualOverride) return; // Prevent auto-speed adjustment during manual override
 
-    chrome.storage.sync.get(["speed", "rememberSpeed", "voiceMode", "pitchCorrection"], ({ speed, rememberSpeed, voiceMode, pitchCorrection }) => {
+    chrome.storage.sync.get(["speed", "rememberSpeed", "voiceMode", "pitchCorrection", "skipAds", "autoTheater", "autoSubtitles", "focusMode"], ({ speed, rememberSpeed, voiceMode, pitchCorrection, skipAds, autoTheater, autoSubtitles, focusMode }) => {
       const video = document.querySelector('video');
       if (!video || !speed) return;
+
+      // ── Ad skipping ────────────────────────────────────────────────────────
+      if (skipAds) {
+        // Click the skip button if it is visible
+        const skipBtn = document.querySelector(
+          '.ytp-skip-ad-button, .ytp-ad-skip-button, .ytp-ad-skip-button-modern, .ytp-ad-skip-button-slot'
+        );
+        if (skipBtn) {
+          skipBtn.click();
+        } else {
+          // If an unskippable ad is playing, fast-forward the ad video to trigger
+          // the skip button or finish the ad as quickly as possible
+          const adShowing = document.querySelector('.ad-showing');
+          if (adShowing && !video.paused) {
+            video.playbackRate = 16;
+          }
+        }
+      }
 
       // Resolve voiceMode (migrate legacy pitchCorrection boolean)
       const mode = voiceMode || (pitchCorrection === false ? 'chipmunk' : 'normal');
       applyVoiceMode(video, mode);
+
+      // ── Auto Theater Mode ─────────────────────────────────────────────────
+      // Clicks the theater button once per video load if not already in theater
+      if (autoTheater && !theaterApplied) {
+        const theaterBtn = document.querySelector('.ytp-size-button');
+        const isAlreadyTheater = !!document.querySelector('ytd-watch-flexy[theater]');
+        if (theaterBtn && !isAlreadyTheater) {
+          theaterBtn.click();
+          theaterApplied = true;
+        } else if (isAlreadyTheater) {
+          theaterApplied = true; // already in theater — no click needed
+        }
+      }
+
+      // ── Subtitle Auto-Enable ─────────────────────────────────────────────
+      // Clicks the captions button once per video load if captions are off
+      if (autoSubtitles && !subtitlesApplied) {
+        const ccBtn = document.querySelector('.ytp-subtitles-button');
+        if (ccBtn) {
+          if (ccBtn.getAttribute('aria-pressed') === 'false') {
+            ccBtn.click();
+          }
+          subtitlesApplied = true;
+        }
+      }
+
+      // ── Focus Mode ───────────────────────────────────────────────────────
+      if (focusMode) {
+        applyFocusMode();
+      } else {
+        removeFocusMode();
+      }
 
       // If remember speed per video is enabled, check for video-specific speed
       if (rememberSpeed && storageKey) {
@@ -631,17 +696,35 @@
         chrome.storage.local.get([videoSpeedKey], (res) => {
           if (res[videoSpeedKey]) {
             video.playbackRate = parseFloat(res[videoSpeedKey]);
-            console.log("Auto: Video-specific speed set to", res[videoSpeedKey]);
           } else {
             video.playbackRate = parseFloat(speed);
-            console.log("Auto: Default speed set to", speed);
           }
         });
       } else {
         video.playbackRate = parseFloat(speed);
-        console.log("Auto: Playback speed set to", speed);
       }
     }); 
+  }
+
+  // Focus Mode: hides the YouTube sidebar navigation while watching
+  function applyFocusMode() {
+    if (document.getElementById('yt-focus-mode-style')) return;
+    const style = document.createElement('style');
+    style.id = 'yt-focus-mode-style';
+    style.textContent = `
+      #guide-inner-content,
+      ytd-guide-renderer,
+      tp-yt-app-drawer#guide,
+      ytd-mini-guide-renderer {
+        display: none !important;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function removeFocusMode() {
+    const style = document.getElementById('yt-focus-mode-style');
+    if (style) style.remove();
   }
 
   // Save speed (either globally or per video)
@@ -654,7 +737,6 @@
       if (rememberSpeed && storageKey) {
         const videoSpeedKey = `${storageKey}_speed`;
         chrome.storage.local.set({ [videoSpeedKey]: speed.toString() });
-        console.log(`Video-specific speed saved: ${speed}x`);
       }
     });
   }

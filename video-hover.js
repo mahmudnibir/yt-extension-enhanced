@@ -201,7 +201,7 @@
   function setSpeed(s) {
     const video = activeOverlay && activeOverlay._targetVideo;
     if (!video) return;
-    s = Math.min(4, Math.max(0.25, Math.round(s * 4) / 4));
+    s = Math.min(16, Math.max(0.25, Math.round(s * 4) / 4));
     video.playbackRate = s;
     updateSpeedUI(s);
     chrome.storage.local.set({ [SPEED_KEY]: s });
@@ -650,7 +650,7 @@
     const current = parseFloat(video.playbackRate.toFixed(2));
     const newSpeed = parseFloat(
       (isIncrease
-        ? Math.min(4,    Math.round((current + 0.25) * 4) / 4)
+        ? Math.min(16,   Math.round((current + 0.25) * 4) / 4)
         : Math.max(0.25, Math.round((current - 0.25) * 4) / 4)
       ).toFixed(2)
     );

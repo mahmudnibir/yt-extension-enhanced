@@ -671,7 +671,121 @@
       transform: translateY(-1px);
     }
     .btn-clear:disabled { cursor: not-allowed; opacity: 0.4; }
-    
+
+    .btn-import {
+      width: 100%;
+      background: var(--bg-card);
+      color: var(--text-primary);
+      font-weight: 500;
+      padding: 10px 14px;
+      border-radius: 10px;
+      font-size: 11px;
+      border: 1px solid var(--border-color);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.2s;
+      margin-top: 6px;
+    }
+    .btn-import:hover {
+      background: var(--bg-card-hover);
+      border-color: var(--border-color-hover);
+      transform: translateY(-1px);
+    }
+    .preset-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+      margin-top: 6px;
+    }
+    .btn-preset {
+      background: var(--bg-card);
+      color: var(--text-primary);
+      font-weight: 600;
+      padding: 8px 6px;
+      border-radius: 8px;
+      font-size: 11px;
+      border: 1px solid var(--border-color);
+      cursor: pointer;
+      transition: all 0.2s;
+      text-align: center;
+    }
+    .btn-preset:hover {
+      background: var(--bg-card-hover);
+      border-color: var(--accent-color);
+      color: var(--accent-color);
+    }
+    .btn-preset.active {
+      background: var(--accent-color);
+      color: white;
+      border-color: var(--accent-color);
+    }
+    .volume-slider-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 6px 4px 2px;
+    }
+    #defaultVolume {
+      flex: 1;
+      height: 8px;
+      background: var(--border-color);
+      border-radius: 10px;
+      outline: none;
+      cursor: pointer;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+    #defaultVolume::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--accent-color);
+      cursor: grab;
+      transition: transform 0.2s;
+    }
+    #defaultVolume::-webkit-slider-thumb:hover { transform: scale(1.1); }
+    #defaultVolume::-moz-range-thumb {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--accent-color);
+      border: none;
+    }
+    .volume-display {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-primary);
+      min-width: 36px;
+      text-align: right;
+    }
+    .btn-reset-stats {
+      background: rgba(234, 179, 8, 0.1);
+      color: rgba(234, 179, 8, 0.9);
+      font-weight: 500;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 12px;
+      border: 1px solid rgba(234, 179, 8, 0.2);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+    .btn-reset-stats:hover {
+      background: rgba(234, 179, 8, 0.18);
+      transform: translateY(-1px);
+    }
+    .icon-warning {
+      background: rgba(234, 179, 8, 0.08) !important;
+      color: rgba(234, 179, 8, 0.9);
+    }
+
     .icon-destructive {
       background: rgba(239, 68, 68, 0.08) !important;
       color: rgba(239, 68, 68, 0.9);
@@ -1238,6 +1352,13 @@
                 <span>10×</span>
                 <span>20×</span>
               </div>
+              <!-- Speed Presets -->
+              <div class="preset-row">
+                <button class="btn-preset" data-speed="1.25">1.25×</button>
+                <button class="btn-preset" data-speed="1.5">1.5×</button>
+                <button class="btn-preset" data-speed="1.75">1.75×</button>
+                <button class="btn-preset" data-speed="2">2×</button>
+              </div>
             </div>
           </div>
         </div>
@@ -1357,6 +1478,28 @@
             </label>
           </div>
         </div>
+
+        <!-- Focus Mode -->
+        <div class="setting-item setting-item-full">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <div class="setting-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="3"></circle>
+                <path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"></path>
+              </svg>
+            </div>
+            <div class="setting-content">
+              <div class="setting-title">Focus Mode</div>
+              <div class="setting-desc">Hide sidebar and feed while watching</div>
+            </div>
+          </div>
+          <div>
+            <input id="focusMode" type="checkbox" class="toggle-input">
+            <label for="focusMode" class="toggle-label">
+              <div class="toggle-thumb"></div>
+            </label>
+          </div>
+        </div>
       </section>
       
       <!-- General Settings -->
@@ -1377,6 +1520,29 @@
           <div>
             <input id="skipAds" type="checkbox" class="toggle-input">
             <label for="skipAds" class="toggle-label">
+              <div class="toggle-thumb"></div>
+            </label>
+          </div>
+        </div>
+
+        <!-- Auto Theater Mode -->
+        <div class="setting-item setting-item-full">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <div class="setting-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2" y="3" width="20" height="14" rx="2"></rect>
+                <line x1="8" y1="21" x2="16" y2="21"></line>
+                <line x1="12" y1="17" x2="12" y2="21"></line>
+              </svg>
+            </div>
+            <div class="setting-content">
+              <div class="setting-title">Auto Theater Mode</div>
+              <div class="setting-desc">Expand to theater view on video load</div>
+            </div>
+          </div>
+          <div>
+            <input id="autoTheater" type="checkbox" class="toggle-input">
+            <label for="autoTheater" class="toggle-label">
               <div class="toggle-thumb"></div>
             </label>
           </div>
@@ -2046,7 +2212,7 @@
         <div class="info-text">
           Press <kbd>P</kbd> on any video to add bookmarks
         </div>
-        <button class="btn-export">
+        <button class="btn-export" id="exportBookmarksBtn">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
             <polyline points="17 8 12 3 7 8"></polyline>
@@ -2054,6 +2220,95 @@
           </svg>
           Export Bookmarks
         </button>
+        <input type="file" id="importBookmarksFile" accept=".json" style="display:none;">
+        <button class="btn-import" id="importBookmarksBtn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 16 12 21 17 16"></polyline>
+            <line x1="12" y1="9" x2="12" y2="21"></line>
+          </svg>
+          Import Bookmarks
+        </button>
+      </section>
+
+      <!-- Playback Presets -->
+      <section>
+        <h2>Automation</h2>
+
+        <!-- Default Volume -->
+        <div class="setting-item setting-item-full">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <div class="setting-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+              </svg>
+            </div>
+            <div class="setting-content">
+              <div class="setting-title">Default Volume</div>
+              <div class="setting-desc">Set volume level on every video load</div>
+            </div>
+          </div>
+          <div>
+            <input id="defaultVolumeEnabled" type="checkbox" class="toggle-input">
+            <label for="defaultVolumeEnabled" class="toggle-label">
+              <div class="toggle-thumb"></div>
+            </label>
+          </div>
+        </div>
+        <div class="volume-slider-row">
+          <input id="defaultVolume" type="range" min="0" max="100" value="80">
+          <span id="defaultVolumeDisplay" class="volume-display">80%</span>
+        </div>
+
+        <!-- Auto Fullscreen -->
+        <div class="setting-item setting-item-full" style="margin-top:10px;">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <div class="setting-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="15 3 21 3 21 9"></polyline>
+                <polyline points="9 21 3 21 3 15"></polyline>
+                <line x1="21" y1="3" x2="14" y2="10"></line>
+                <line x1="3" y1="21" x2="10" y2="14"></line>
+              </svg>
+            </div>
+            <div class="setting-content">
+              <div class="setting-title">Auto Fullscreen</div>
+              <div class="setting-desc">Enter fullscreen when playback starts</div>
+            </div>
+          </div>
+          <div>
+            <input id="autoFullscreen" type="checkbox" class="toggle-input">
+            <label for="autoFullscreen" class="toggle-label">
+              <div class="toggle-thumb"></div>
+            </label>
+          </div>
+        </div>
+
+        <!-- Subtitle Auto-Enable -->
+        <div class="setting-item setting-item-full">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <div class="setting-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2" y="3" width="20" height="15" rx="2"></rect>
+                <line x1="6" y1="10" x2="18" y2="10"></line>
+                <line x1="6" y1="14" x2="12" y2="14"></line>
+              </svg>
+            </div>
+            <div class="setting-content">
+              <div class="setting-title">Auto Subtitles</div>
+              <div class="setting-desc">Enable closed captions on video load</div>
+            </div>
+          </div>
+          <div>
+            <input id="autoSubtitles" type="checkbox" class="toggle-input">
+            <label for="autoSubtitles" class="toggle-label">
+              <div class="toggle-thumb"></div>
+            </label>
+          </div>
+        </div>
+
       </section>
       
       <!-- Data & Memory -->
@@ -2080,6 +2335,28 @@
             </label>
           </div>
         </div>
+        <div class="setting-item setting-item-full">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <div class="setting-icon icon-warning">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="1 4 1 10 7 10"></polyline>
+                <path d="M3.51 15a9 9 0 1 0 .49-3.36"></path>
+              </svg>
+            </div>
+            <div class="setting-content">
+              <div class="setting-title">Reset Statistics</div>
+              <div class="setting-desc">Clear watch time stats only</div>
+            </div>
+          </div>
+          <button id="resetStatsBtn" class="btn-reset-stats">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="1 4 1 10 7 10"></polyline>
+              <path d="M3.51 15a9 9 0 1 0 .49-3.36"></path>
+            </svg>
+            Reset
+          </button>
+        </div>
+
         <div class="setting-item setting-item-full">
           <div style="display: flex; align-items: center; gap: 12px;">
             <div class="setting-icon icon-destructive">
@@ -2132,7 +2409,7 @@
     <footer>
       <div class="footer-content">
         <div class="footer-left">
-          <span class="version">v3.6.9</span>
+          <span class="version">v3.7.0</span>
           <div class="status">
             <div class="status-dot"></div>
             Active
