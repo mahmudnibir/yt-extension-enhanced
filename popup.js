@@ -14,9 +14,111 @@ document.addEventListener('DOMContentLoaded', () => {
   // ---------------------------------------------------------------------------
 
     // --- Productivity Graph ---
-    const prodRange = document.getElementById('prodRange');
+    // Custom dropdown proxy for prodRange — mirrors .value and addEventListener('change')
+    // so all downstream code (updateProdGraph) works without modification.
+    const prodRange = (() => {
+      const container = document.getElementById('prodRangeSelect');
+      const trigger   = document.getElementById('prodRangeTrigger');
+      const label     = document.getElementById('prodRangeLabel');
+      const optEls    = document.querySelectorAll('#prodRangeOptions .vm-option');
+      let _val = '7d';
+      const _handlers = [];
+
+      trigger.addEventListener('click', (e) => {
+        e.stopPropagation();
+        container.classList.toggle('open');
+      });
+      document.addEventListener('click', () => container.classList.remove('open'));
+
+      optEls.forEach(opt => {
+        opt.addEventListener('click', (e) => {
+          e.stopPropagation();
+          proxy.value = opt.dataset.value;
+          container.classList.remove('open');
+          _handlers.forEach(fn => fn());
+        });
+      });
+
+      const proxy = {
+        get value() { return _val; },
+        set value(v) {
+          _val = v;
+          const matched = container.querySelector(`[data-value="${v}"]`);
+          label.textContent = matched ? matched.textContent : v;
+          optEls.forEach(o => o.classList.toggle('vm-active', o.dataset.value === v));
+        },
+        addEventListener(type, fn) {
+          if (type === 'change') _handlers.push(fn);
+        },
+      };
+      return proxy;
+    })();
     const prodStatsGraph = document.getElementById('prodStatsGraph');
     let prodStatsData = {};
+
+    // Range-selector proxies for Instagram and Facebook graphs (same pattern as prodRange)
+    const igRange = (() => {
+      const container = document.getElementById('igRangeSelect');
+      const trigger   = document.getElementById('igRangeTrigger');
+      const label     = document.getElementById('igRangeLabel');
+      const optEls    = document.querySelectorAll('#igRangeOptions .vm-option');
+      let _val = '7d';
+      const _handlers = [];
+      trigger.addEventListener('click', (e) => { e.stopPropagation(); container.classList.toggle('open'); });
+      document.addEventListener('click', () => container.classList.remove('open'));
+      optEls.forEach(opt => {
+        opt.addEventListener('click', (e) => {
+          e.stopPropagation();
+          proxy.value = opt.dataset.value;
+          container.classList.remove('open');
+          _handlers.forEach(fn => fn());
+        });
+      });
+      const proxy = {
+        get value() { return _val; },
+        set value(v) {
+          _val = v;
+          const matched = container.querySelector(`[data-value="${v}"]`);
+          label.textContent = matched ? matched.textContent : v;
+          optEls.forEach(o => o.classList.toggle('vm-active', o.dataset.value === v));
+        },
+        addEventListener(type, fn) { if (type === 'change') _handlers.push(fn); },
+      };
+      return proxy;
+    })();
+
+    const fbRange = (() => {
+      const container = document.getElementById('fbRangeSelect');
+      const trigger   = document.getElementById('fbRangeTrigger');
+      const label     = document.getElementById('fbRangeLabel');
+      const optEls    = document.querySelectorAll('#fbRangeOptions .vm-option');
+      let _val = '7d';
+      const _handlers = [];
+      trigger.addEventListener('click', (e) => { e.stopPropagation(); container.classList.toggle('open'); });
+      document.addEventListener('click', () => container.classList.remove('open'));
+      optEls.forEach(opt => {
+        opt.addEventListener('click', (e) => {
+          e.stopPropagation();
+          proxy.value = opt.dataset.value;
+          container.classList.remove('open');
+          _handlers.forEach(fn => fn());
+        });
+      });
+      const proxy = {
+        get value() { return _val; },
+        set value(v) {
+          _val = v;
+          const matched = container.querySelector(`[data-value="${v}"]`);
+          label.textContent = matched ? matched.textContent : v;
+          optEls.forEach(o => o.classList.toggle('vm-active', o.dataset.value === v));
+        },
+        addEventListener(type, fn) { if (type === 'change') _handlers.push(fn); },
+      };
+      return proxy;
+    })();
+
+    let igStatsData = {};
+    let fbStatsData = {};
 
     // Helper: get range dates
     function getRangeDates(range) {
@@ -44,127 +146,130 @@ document.addEventListener('DOMContentLoaded', () => {
       return { start, end };
     }
 
-    // Draw minimalistic line graph (videos watched per day/hour)
-    function drawProdGraph(stats, range) {
-      if (!prodStatsGraph) return;
-      const ctx = prodStatsGraph.getContext('2d');
-      ctx.clearRect(0, 0, prodStatsGraph.width, prodStatsGraph.height);
-      // Use computed styles for theme colors
-      const root = document.documentElement;
-      const computed = getComputedStyle(root);
-      const axisColor = computed.getPropertyValue('--border-color')?.trim() || '#888';
-      const lineColor = computed.getPropertyValue('--accent-color')?.trim() || '#ff0000';
-      const pointColor = computed.getPropertyValue('--accent-color')?.trim() || '#ff0000';
-      const labelColor = computed.getPropertyValue('--text-primary')?.trim() || '#fff';
-      const bgColor = computed.getPropertyValue('--bg-card')?.trim() || '#181818';
-      // Fill background to match card
-      ctx.save();
-      ctx.fillStyle = bgColor;
-      ctx.fillRect(0, 0, prodStatsGraph.width, prodStatsGraph.height);
-      ctx.restore();
+    /**
+     * Generic smooth area-line graph renderer shared by all platforms.
+     * Uses bezier curves for smooth lines, gradient fill, and theme-aware colours.
+     * @param {Object}           stats    - daily stats keyed by Date.toDateString()
+     * @param {string}           range    - '1d' | '3d' | '7d' | '1m'
+     * @param {HTMLCanvasElement} canvas
+     * @param {string}           valueKey - property in each day entry to plot
+     */
+    function drawGraph(stats, range, canvas, valueKey) {
+      if (!canvas) return;
+      const dpr  = window.devicePixelRatio || 1;
+      const cssW = canvas.offsetWidth || 332;
+      const cssH = 120;
+      canvas.width  = Math.round(cssW * dpr);
+      canvas.height = Math.round(cssH * dpr);
+      const ctx = canvas.getContext('2d');
+      ctx.scale(dpr, dpr);
+      ctx.clearRect(0, 0, cssW, cssH);
 
-      // Prepare data
-      let labels = [];
-      let values = [];
+      // Build data series
+      let labels = [], values = [];
       const { start, end } = getRangeDates(range);
       if (range === '1d') {
-        // Last 24 hours, show by hour
         for (let h = 0; h < 24; h++) {
           const d = new Date(start);
           d.setHours(start.getHours() + h);
           const key = d.toDateString();
-          // Sum all videos for this hour
-          let hourVal = 0;
-          for (let k in stats) {
-            const statDate = new Date(k);
-            if (statDate.toDateString() === d.toDateString() && stats[k].hourly) {
-              hourVal = stats[k].hourly[d.getHours()] || 0;
-            }
-          }
-          labels.push(d.getHours() + ':00');
-          values.push(hourVal);
+          let val = 0;
+          if (stats[key]?.hourly) val = stats[key].hourly[d.getHours()] || 0;
+          labels.push(h + ':00');
+          values.push(val);
         }
       } else {
-        // By day
         let d = new Date(start);
         d.setHours(0, 0, 0, 0);
         while (d <= end) {
           const key = d.toDateString();
           labels.push(new Date(d));
-          values.push((stats[key]?.videos) || 0);
+          values.push((stats[key]?.[valueKey]) || 0);
           d.setDate(d.getDate() + 1);
         }
       }
 
-      // Graph area
-      const w = prodStatsGraph.width;
-      const h = prodStatsGraph.height;
-      const pad = 24;
+      const n = values.length;
+      if (n < 2) return;
+
+      const pad    = { top: 12, right: 10, bottom: 26, left: 10 };
+      const gW     = cssW - pad.left - pad.right;
+      const gH     = cssH - pad.top  - pad.bottom;
       const maxVal = Math.max(1, ...values);
-      // Draw axis
-      ctx.strokeStyle = axisColor;
-      ctx.lineWidth = 1.2;
+      const pts    = values.map((v, i) => ({
+        x: pad.left + (i / (n - 1)) * gW,
+        y: pad.top  + gH - (v / maxVal) * gH,
+      }));
+
+      // Smooth gradient area fill
+      const fill = ctx.createLinearGradient(0, pad.top, 0, pad.top + gH);
+      fill.addColorStop(0, 'rgba(255,0,0,0.22)');
+      fill.addColorStop(1, 'rgba(255,0,0,0.02)');
       ctx.beginPath();
-      ctx.moveTo(pad, h - pad);
-      ctx.lineTo(w - pad, h - pad);
-      ctx.moveTo(pad, h - pad);
-      ctx.lineTo(pad, pad);
-      ctx.stroke();
-      // Draw line
-      ctx.strokeStyle = lineColor;
-      ctx.lineWidth = 2.5;
+      ctx.moveTo(pts[0].x, pad.top + gH);
+      ctx.lineTo(pts[0].x, pts[0].y);
+      for (let i = 1; i < n; i++) {
+        const dx = (pts[i].x - pts[i - 1].x) * 0.4;
+        ctx.bezierCurveTo(pts[i-1].x + dx, pts[i-1].y, pts[i].x - dx, pts[i].y, pts[i].x, pts[i].y);
+      }
+      ctx.lineTo(pts[n - 1].x, pad.top + gH);
+      ctx.closePath();
+      ctx.fillStyle = fill;
+      ctx.fill();
+
+      // Smooth line stroke
       ctx.beginPath();
-      values.forEach((v, i) => {
-        const x = pad + (i * (w - 2 * pad)) / (values.length - 1 || 1);
-        const y = h - pad - (v * (h - 2 * pad)) / maxVal;
-        if (i === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
-      });
-      ctx.shadowColor = lineColor + '55';
-      ctx.shadowBlur = 4;
+      ctx.moveTo(pts[0].x, pts[0].y);
+      for (let i = 1; i < n; i++) {
+        const dx = (pts[i].x - pts[i - 1].x) * 0.4;
+        ctx.bezierCurveTo(pts[i-1].x + dx, pts[i-1].y, pts[i].x - dx, pts[i].y, pts[i].x, pts[i].y);
+      }
+      ctx.strokeStyle = 'rgba(255,0,0,0.85)';
+      ctx.lineWidth   = 2;
+      ctx.lineJoin    = 'round';
+      ctx.lineCap     = 'round';
       ctx.stroke();
-      ctx.shadowBlur = 0;
-      // Draw points
-      ctx.fillStyle = pointColor;
-      values.forEach((v, i) => {
-        const x = pad + (i * (w - 2 * pad)) / (values.length - 1 || 1);
-        const y = h - pad - (v * (h - 2 * pad)) / maxVal;
-        ctx.beginPath();
-        ctx.arc(x, y, 3.5, 0, 2 * Math.PI);
-        ctx.fill();
-      });
-      // Draw min/max labels
-      ctx.fillStyle = labelColor;
-      ctx.font = '11px "Segoe UI", Arial, sans-serif';
-      ctx.fillText(maxVal, 2, pad + 6);
-      ctx.fillText('0', 6, h - pad + 10);
-      // Draw X axis labels
-      ctx.save();
-      ctx.font = '10px "Segoe UI", Arial, sans-serif';
+
+      // Subtle baseline
+      ctx.beginPath();
+      ctx.strokeStyle = 'rgba(255,255,255,0.07)';
+      ctx.lineWidth   = 1;
+      ctx.moveTo(pad.left, pad.top + gH + 1);
+      ctx.lineTo(pad.left + gW, pad.top + gH + 1);
+      ctx.stroke();
+
+      // Last-point accent dot
+      const last = pts[n - 1];
+      ctx.beginPath();
+      ctx.arc(last.x, last.y, 4.5, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255,0,0,0.9)';
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(last.x, last.y, 2, 0, Math.PI * 2);
+      ctx.fillStyle = '#fff';
+      ctx.fill();
+
+      // X-axis labels
+      const labelColor = getComputedStyle(document.documentElement)
+        .getPropertyValue('--text-secondary').trim() || 'rgba(255,255,255,0.6)';
+      ctx.font      = '10px Inter, -apple-system, sans-serif';
       ctx.fillStyle = labelColor;
       ctx.textAlign = 'center';
-      let labelStep = 1;
-      if (labels.length > 8) labelStep = Math.ceil(labels.length / 8);
+      const step = Math.max(1, Math.ceil(n / 6));
       labels.forEach((lbl, i) => {
-        let showLabel = false;
+        if (i % step !== 0 && i !== n - 1) return;
+        const x = pad.left + (i / (n - 1)) * gW;
         let text = '';
-        if (range === '1d') {
-          // Show only 6 labels: every 4 hours, and always last (23:00)
-          if (i % 4 === 0 || i === labels.length - 1) showLabel = true;
-          text = lbl;
-        } else if (range === '1m') {
-          showLabel = (i % labelStep === 0 || i === labels.length - 1);
-          text = lbl.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-        } else {
-          showLabel = (i % labelStep === 0 || i === labels.length - 1);
-          text = lbl.toLocaleDateString('en-US', { weekday: 'short' });
-        }
-        if (showLabel) {
-          const x = pad + (i * (w - 2 * pad)) / (labels.length - 1 || 1);
-          ctx.fillText(text, x, h - pad + 16);
-        }
+        if      (range === '1d') text = lbl;
+        else if (range === '1m') text = lbl.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        else                     text = lbl.toLocaleDateString('en-US', { weekday: 'short' });
+        ctx.fillText(text, x, cssH - 4);
       });
-      ctx.restore();
+    }
+
+    /** Thin wrapper — keeps existing callers working. */
+    function drawProdGraph(stats, range) {
+      drawGraph(stats, range, prodStatsGraph, 'videos');
     }
 
     function updateProdGraph() {
@@ -175,6 +280,17 @@ document.addEventListener('DOMContentLoaded', () => {
     if (prodRange) {
       prodRange.addEventListener('change', updateProdGraph);
     }
+
+    // Update helpers for social platform graphs
+    function updateIgGraph() {
+      drawGraph(igStatsData, igRange.value, document.getElementById('igStatsGraph'), 'videosWatched');
+    }
+    function updateFbGraph() {
+      drawGraph(fbStatsData, fbRange.value, document.getElementById('fbStatsGraph'), 'videosWatched');
+    }
+    igRange.addEventListener('change', updateIgGraph);
+    fbRange.addEventListener('change', updateFbGraph);
+
   const speedInput = document.getElementById('speed');
   const speedDisplay = document.getElementById('speedDisplay');
   const skipAdsCheckbox = document.getElementById('skipAds');
@@ -723,29 +839,48 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // Theme toggle functionality
-  const themeToggle = document.getElementById('themeToggle');
-  
-  // Load saved theme
-  chrome.storage.sync.get(['theme'], (data) => {
-    const theme = data.theme || 'youtube';
-    if (theme === 'blue') {
-      document.documentElement.setAttribute('data-theme', 'blue');
-    }
+  // Expand toggle — grows popup to give more room, persists state
+  const expandToggle = document.getElementById('expandToggle');
+  const SIZES = {
+    normal:   { w: 380, h: 580 },
+    expanded: { w: 460, h: 680 }
+  };
+
+  const applySize = (expanded) => {
+    const s = expanded ? SIZES.expanded : SIZES.normal;
+    document.body.style.width  = s.w + 'px';
+    document.body.style.height = s.h + 'px';
+    // Clamp the html element to the same size to suppress browser-level scrollbar
+    document.documentElement.style.width  = s.w + 'px';
+    document.documentElement.style.height = s.h + 'px';
+    // Swap icon between expand and collapse arrows
+    expandToggle.innerHTML = expanded
+      ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+           <polyline points="4 14 10 14 10 20"></polyline>
+           <polyline points="20 10 14 10 14 4"></polyline>
+           <line x1="10" y1="14" x2="3" y2="21"></line>
+           <line x1="21" y1="3" x2="14" y2="10"></line>
+         </svg>`
+      : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+           <polyline points="15 3 21 3 21 9"></polyline>
+           <polyline points="9 21 3 21 3 15"></polyline>
+           <line x1="21" y1="3" x2="14" y2="10"></line>
+           <line x1="3" y1="21" x2="10" y2="14"></line>
+         </svg>`;
+    expandToggle.title = expanded ? 'Collapse popup' : 'Expand popup';
+  };
+
+  // Restore saved expand state
+  chrome.storage.local.get(['popupExpanded'], (data) => {
+    applySize(!!data.popupExpanded);
   });
-  
-  themeToggle.addEventListener('click', () => {
-    const currentTheme = document.documentElement.getAttribute('data-theme');
-    const newTheme = currentTheme === 'blue' ? 'youtube' : 'blue';
-    
-    if (newTheme === 'blue') {
-      document.documentElement.setAttribute('data-theme', 'blue');
-    } else {
-      document.documentElement.removeAttribute('data-theme');
-    }
-    
-    // Save theme preference
-    chrome.storage.sync.set({ theme: newTheme });
+
+  expandToggle.addEventListener('click', () => {
+    chrome.storage.local.get(['popupExpanded'], (data) => {
+      const next = !data.popupExpanded;
+      chrome.storage.local.set({ popupExpanded: next });
+      applySize(next);
+    });
   });
 
   // Keyboard navigation
@@ -770,6 +905,14 @@ document.addEventListener('DOMContentLoaded', () => {
       // Add active class to clicked tab and corresponding content
       tab.classList.add('active');
       document.getElementById(targetTab).classList.add('active');
+      // Redraw graphs when Stats tab becomes visible (canvas has zero width while hidden)
+      if (targetTab === 'stats') {
+        requestAnimationFrame(() => {
+          updateProdGraph();
+          updateIgGraph();
+          updateFbGraph();
+        });
+      }
     });
   });
 
@@ -1173,6 +1316,8 @@ document.addEventListener('DOMContentLoaded', () => {
       set('ig-week-chat',       formatTimeShort(week.chat / 60));
       const igDate = document.getElementById('ig-today-date');
       if (igDate) igDate.textContent = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      igStatsData = daily;
+      setTimeout(() => drawGraph(igStatsData, igRange.value, document.getElementById('igStatsGraph'), 'videosWatched'), 50);
     });
 
     // Facebook
@@ -1196,6 +1341,8 @@ document.addEventListener('DOMContentLoaded', () => {
       set('fb-week-chat',       formatTimeShort(week.chat / 60));
       const fbDate = document.getElementById('fb-today-date');
       if (fbDate) fbDate.textContent = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      fbStatsData = daily;
+      setTimeout(() => drawGraph(fbStatsData, fbRange.value, document.getElementById('fbStatsGraph'), 'videosWatched'), 50);
     });
   }
 
