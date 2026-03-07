@@ -108,6 +108,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
   <title>YouTube Enhanced</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     
@@ -145,7 +148,7 @@
       width: 380px;
       height: 580px;
       overflow: hidden;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       background: var(--bg-primary);
       color: var(--text-primary);
       position: relative;
@@ -405,12 +408,10 @@
     }
     
     #speed::-webkit-slider-thumb:hover {
-      transform: scale(1.1);
     }
     
     #speed::-webkit-slider-thumb:active {
       cursor: grabbing;
-      transform: scale(1.05);
     }
     
     #speed::-moz-range-thumb {
@@ -424,12 +425,10 @@
     }
     
     #speed::-moz-range-thumb:hover {
-      transform: scale(1.1);
     }
     
     #speed::-moz-range-thumb:active {
       cursor: grabbing;
-      transform: scale(1.05);
     }
     
     #speedDisplay {
@@ -448,9 +447,29 @@
     .speed-labels {
       display: flex;
       justify-content: space-between;
+      padding: 2px 2px 0;
+      margin-top: 2px;
+    }
+    .speed-tick {
+      background: none;
+      border: none;
       font-size: 10px;
-      color: rgba(255, 255, 255, 0.4);
-      padding: 0 4px;
+      font-weight: 500;
+      color: rgba(255,255,255,0.35);
+      cursor: pointer;
+      padding: 3px 6px;
+      border-radius: 5px;
+      transition: color 0.15s, background 0.15s;
+      line-height: 1;
+    }
+    .speed-tick:hover {
+      color: rgba(255,255,255,0.8);
+      background: var(--bg-card-hover);
+    }
+    .speed-tick.active {
+      color: var(--accent-color);
+      background: rgba(255,255,255,0.06);
+      font-weight: 700;
     }
     
     /* Toggle Switch */
@@ -541,8 +560,6 @@
     
     .shortcut-input:hover {
       background: linear-gradient(135deg, var(--bg-card-hover), var(--bg-card));
-      border-color: var(--accent-color);
-      transform: translateY(-2px);
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
     }
     
@@ -551,7 +568,6 @@
     }
     
     .shortcut-input:active {
-      transform: translateY(0px);
       box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
     }
     
@@ -615,7 +631,6 @@
       background: var(--bg-card);
       color: var(--accent-color);
       border-color: var(--accent-color);
-      transform: translateY(-1px);
     }
     
     .shortcut-reset:hover::before {
@@ -648,7 +663,6 @@
     .btn-export:hover { 
       background: var(--bg-card-hover);
       border-color: var(--border-color-hover);
-      transform: translateY(-1px);
     }
     
     .btn-clear {
@@ -668,7 +682,6 @@
     
     .btn-clear:hover { 
       background: rgba(239, 68, 68, 0.15);
-      transform: translateY(-1px);
     }
     .btn-clear:disabled { cursor: not-allowed; opacity: 0.4; }
 
@@ -692,7 +705,6 @@
     .btn-import:hover {
       background: var(--bg-card-hover);
       border-color: var(--border-color-hover);
-      transform: translateY(-1px);
     }
     .preset-row {
       display: grid;
@@ -748,7 +760,7 @@
       cursor: grab;
       transition: transform 0.2s;
     }
-    #defaultVolume::-webkit-slider-thumb:hover { transform: scale(1.1); }
+    #defaultVolume::-webkit-slider-thumb:hover { }
     #defaultVolume::-moz-range-thumb {
       width: 18px;
       height: 18px;
@@ -779,8 +791,96 @@
     }
     .btn-reset-stats:hover {
       background: rgba(234, 179, 8, 0.18);
-      transform: translateY(-1px);
     }
+
+    /* Panel-level reset button — bold red danger style, matches btn-export dimensions */
+    .btn-panel-reset {
+      width: 100%;
+      background: rgba(239, 68, 68, 0.18);
+      color: rgba(239, 68, 68, 1);
+      font-weight: 600;
+      padding: 10px 14px;
+      border-radius: 10px;
+      font-size: 11px;
+      border: 1px solid rgba(239, 68, 68, 0.45);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+    .btn-panel-reset:hover {
+      background: rgba(239, 68, 68, 0.28);
+      border-color: rgba(239, 68, 68, 0.7);
+      color: #ffffff;
+    }
+
+    /* 3-dot kebab menu */
+    .dashboard-actions .btn-export { flex: 1; width: auto; }
+    .kebab-wrapper { position: relative; flex-shrink: 0; }
+    .btn-kebab {
+      width: 38px;
+      height: 38px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 3px;
+      padding: 0;
+      transition: all 0.2s;
+    }
+    .btn-kebab:hover {
+      background: var(--bg-card-hover);
+      border-color: var(--border-color-hover);
+    }
+    .btn-kebab span {
+      display: block;
+      width: 3.5px;
+      height: 3.5px;
+      background: var(--text-secondary);
+      border-radius: 50%;
+      transition: background 0.2s;
+    }
+    .btn-kebab:hover span { background: var(--text-primary); }
+    .kebab-menu {
+      position: absolute;
+      bottom: calc(100% + 6px);
+      right: 0;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 4px;
+      min-width: 158px;
+      z-index: 200;
+      display: none;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.45);
+    }
+    .kebab-menu.open { display: block; }
+    .kebab-item {
+      width: 100%;
+      background: none;
+      border: none;
+      border-radius: 7px;
+      padding: 9px 12px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: background 0.15s;
+      color: var(--text-primary);
+      text-align: left;
+      white-space: nowrap;
+    }
+    .kebab-item:hover { background: var(--bg-card-hover); }
+    .kebab-item-danger { color: rgba(239, 68, 68, 0.9); }
+    .kebab-item-danger:hover { background: rgba(239, 68, 68, 0.12); color: rgba(239,68,68,1); }
     .icon-warning {
       background: rgba(234, 179, 8, 0.08) !important;
       color: rgba(234, 179, 8, 0.9);
@@ -836,7 +936,6 @@
     .stat-card:hover {
       background: var(--bg-card-hover);
       border-color: var(--border-color-hover);
-      transform: translateY(-2px);
     }
     
     .stat-icon {
@@ -1190,7 +1289,6 @@
     
     .modal-btn-primary:hover {
       background: var(--accent-hover);
-      transform: translateY(-1px);
     }
     
     .modal-btn-primary:disabled {
@@ -1284,7 +1382,6 @@
       background: var(--accent-color);
       border-color: var(--accent-color);
       color: white;
-      transform: translateY(-1px);
     }
     
     .footer-btn svg {
@@ -1320,8 +1417,8 @@
     
     <div class="tabs">
       <button class="tab active" data-tab="general">General</button>
-      <button class="tab" data-tab="shortcuts">Shortcuts</button>
       <button class="tab" data-tab="stats">Stats</button>
+      <button class="tab" data-tab="shortcuts">Shortcuts</button>
       <button class="tab" data-tab="advanced">Advanced</button>
     </div>
     
@@ -1346,18 +1443,11 @@
                 <span id="speedDisplay">1.0×</span>
               </div>
               <div class="speed-labels">
-                <span>0.25×</span>
-                <span>1×</span>
-                <span>5×</span>
-                <span>10×</span>
-                <span>20×</span>
-              </div>
-              <!-- Speed Presets -->
-              <div class="preset-row">
-                <button class="btn-preset" data-speed="1.25">1.25×</button>
-                <button class="btn-preset" data-speed="1.5">1.5×</button>
-                <button class="btn-preset" data-speed="1.75">1.75×</button>
-                <button class="btn-preset" data-speed="2">2×</button>
+                <button class="speed-tick" data-speed="0.25">0.25×</button>
+                <button class="speed-tick" data-speed="1">1×</button>
+                <button class="speed-tick" data-speed="5">5×</button>
+                <button class="speed-tick" data-speed="10">10×</button>
+                <button class="speed-tick" data-speed="20">20×</button>
               </div>
             </div>
           </div>
@@ -1958,6 +2048,19 @@
                 </svg>
                 Refresh Stats
               </button>
+              <div class="kebab-wrapper">
+                <button class="btn-kebab" id="ytKebab" aria-label="More options">
+                  <span></span><span></span><span></span>
+                </button>
+                <div class="kebab-menu" id="ytKebabMenu">
+                  <button class="kebab-item kebab-item-danger" id="resetYtStats">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                    </svg>
+                    Reset Stats
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -2075,6 +2178,19 @@
                 </svg>
                 Refresh Stats
               </button>
+              <div class="kebab-wrapper">
+                <button class="btn-kebab" id="igKebab" aria-label="More options">
+                  <span></span><span></span><span></span>
+                </button>
+                <div class="kebab-menu" id="igKebabMenu">
+                  <button class="kebab-item kebab-item-danger" id="resetIgStats">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z"/>
+                    </svg>
+                    Reset Stats
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -2190,14 +2306,19 @@
                 </svg>
                 Refresh Stats
               </button>
-              <button class="btn-export" id="resetFbStats" style="background:rgba(239,68,68,0.12);border-color:rgba(239,68,68,0.4);color:#ef4444;">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <polyline points="3 6 5 6 21 6"></polyline>
-                  <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path>
-                  <path d="M10 11v6M14 11v6"></path>
-                </svg>
-                Reset FB Stats
-              </button>
+              <div class="kebab-wrapper">
+                <button class="btn-kebab" id="fbKebab" aria-label="More options">
+                  <span></span><span></span><span></span>
+                </button>
+                <div class="kebab-menu" id="fbKebabMenu">
+                  <button class="kebab-item kebab-item-danger" id="resetFbStats">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                    </svg>
+                    Reset Stats
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>

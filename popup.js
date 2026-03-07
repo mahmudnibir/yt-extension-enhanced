@@ -282,10 +282,14 @@ document.addEventListener('DOMContentLoaded', () => {
     focusMode: false,
   };
 
-  // Update speed display with enhanced formatting
+  // Update speed display with enhanced formatting + progress-bar fill
   const updateSpeedDisplay = (value) => {
     const speed = parseFloat(value);
     speedDisplay.textContent = `${speed.toFixed(1)}×`;
+    // Map value within [0.25, 20] to fill percentage
+    const pct = ((speed - 0.25) / (20 - 0.25)) * 100;
+    const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent-color').trim() || '#ff0000';
+    speedInput.style.background = `linear-gradient(to right, ${accent} ${pct}%, var(--border-color) ${pct}%)`;
   };
 
   // Load stored settings with animation
@@ -320,8 +324,8 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     updateSpeedDisplay(data.speed);
 
-    // Sync active preset button highlight
-    syncPresetButtons(parseFloat(data.speed));
+    // Sync active speed tick highlight
+    syncSpeedTicks(parseFloat(data.speed));
   });
 
   // Auto-save function
@@ -390,12 +394,9 @@ document.addEventListener('DOMContentLoaded', () => {
   // Real-time speed display update with auto-save
   speedInput.addEventListener('input', (e) => {
     updateSpeedDisplay(e.target.value);
-    speedDisplay.style.transform = 'scale(1.05)';
-    setTimeout(() => {
-      speedDisplay.style.transform = 'scale(1)';
-    }, 150);
-    // Deactivate preset buttons when user drags the slider manually
-    syncPresetButtons(parseFloat(e.target.value));
+    speedDisplay.style.transform = 'scale(1)';
+    // Sync speed tick highlights
+    syncSpeedTicks(parseFloat(e.target.value));
     autoSave();
   });
 
@@ -424,18 +425,18 @@ document.addEventListener('DOMContentLoaded', () => {
   autoSubtitlesCheckbox.addEventListener('change', autoSave);
   focusModeCheckbox.addEventListener('change', autoSave);
 
-  // Speed preset buttons
-  function syncPresetButtons(speed) {
-    document.querySelectorAll('.btn-preset').forEach(btn => {
+  // Speed tick labels (replaces preset buttons)
+  function syncSpeedTicks(speed) {
+    document.querySelectorAll('.speed-tick').forEach(btn => {
       btn.classList.toggle('active', parseFloat(btn.dataset.speed) === speed);
     });
   }
-  document.querySelectorAll('.btn-preset').forEach(btn => {
+  document.querySelectorAll('.speed-tick').forEach(btn => {
     btn.addEventListener('click', () => {
-      const preset = parseFloat(btn.dataset.speed);
-      speedInput.value = preset;
-      updateSpeedDisplay(preset);
-      syncPresetButtons(preset);
+      const val = parseFloat(btn.dataset.speed);
+      speedInput.value = val;
+      updateSpeedDisplay(val);
+      syncSpeedTicks(val);
       autoSave();
     });
   });
@@ -485,13 +486,30 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Reset Statistics button
+  // Reset Statistics button (data management section) — secure 2-step flow
   if (resetStatsBtn) {
-    resetStatsBtn.addEventListener('click', () => {
-      if (!confirm('Reset all watch statistics? Bookmarks and settings will not be affected.')) return;
+    resetStatsBtn.addEventListener('click', async () => {
+      const confirmed = await showModal({
+        title: 'Reset YouTube Statistics',
+        message: 'This will permanently clear all your YouTube watch time statistics. Bookmarks and settings will not be affected.',
+        warning: '⚠️ This action cannot be undone.',
+        buttons: [
+          { text: 'Cancel', type: 'secondary' },
+          { text: 'Continue', type: 'primary' }
+        ]
+      });
+      if (!confirmed) return;
+
+      const typeConfirmed = await showConfirmationInput({
+        title: 'Type to Confirm',
+        message: 'To confirm, please type <strong>RESET YOUTUBE STATS</strong> in the box below:',
+        confirmText: 'RESET YOUTUBE STATS',
+        placeholder: 'Type here...'
+      });
+      if (!typeConfirmed) return;
+
       chrome.storage.local.remove(['statistics'], () => {
         loadStatistics();
-        alert('✅ Statistics reset successfully.');
       });
     });
   }
@@ -1191,6 +1209,65 @@ document.addEventListener('DOMContentLoaded', () => {
       setTimeout(() => { refreshIgBtn.style.transform = 'rotate(0deg)'; }, 500);
     });
   }
+
+  // Reset YouTube stats from the YouTube panel — secure 2-step flow
+  const resetYtBtn = document.getElementById('resetYtStats');
+  if (resetYtBtn) {
+    resetYtBtn.addEventListener('click', async () => {
+      const confirmed = await showModal({
+        title: 'Reset YouTube Statistics',
+        message: 'This will permanently clear all your YouTube watch time statistics. Bookmarks and settings will not be affected.',
+        warning: '⚠️ This action cannot be undone.',
+        buttons: [
+          { text: 'Cancel', type: 'secondary' },
+          { text: 'Continue', type: 'primary' }
+        ]
+      });
+      if (!confirmed) return;
+
+      const typeConfirmed = await showConfirmationInput({
+        title: 'Type to Confirm',
+        message: 'To confirm, please type <strong>RESET YOUTUBE STATS</strong> in the box below:',
+        confirmText: 'RESET YOUTUBE STATS',
+        placeholder: 'Type here...'
+      });
+      if (!typeConfirmed) return;
+
+      chrome.storage.local.remove(['statistics'], () => {
+        loadStatistics();
+      });
+    });
+  }
+
+  // Reset Instagram stats — secure 2-step flow
+  const resetIgBtn = document.getElementById('resetIgStats');
+  if (resetIgBtn) {
+    resetIgBtn.addEventListener('click', async () => {
+      const confirmed = await showModal({
+        title: 'Reset Instagram Statistics',
+        message: 'This will permanently clear all your Instagram activity statistics. This action cannot be undone.',
+        warning: '⚠️ This action cannot be undone.',
+        buttons: [
+          { text: 'Cancel', type: 'secondary' },
+          { text: 'Continue', type: 'primary' }
+        ]
+      });
+      if (!confirmed) return;
+
+      const typeConfirmed = await showConfirmationInput({
+        title: 'Type to Confirm',
+        message: 'To confirm, please type <strong>RESET INSTAGRAM STATS</strong> in the box below:',
+        confirmText: 'RESET INSTAGRAM STATS',
+        placeholder: 'Type here...'
+      });
+      if (!typeConfirmed) return;
+
+      chrome.storage.local.remove(['igStats'], () => {
+        loadSocialStats();
+      });
+    });
+  }
+
   const refreshFbBtn = document.getElementById('refreshFbStats');
   if (refreshFbBtn) {
     refreshFbBtn.addEventListener('click', () => {
@@ -1200,10 +1277,30 @@ document.addEventListener('DOMContentLoaded', () => {
       setTimeout(() => { refreshFbBtn.style.transform = 'rotate(0deg)'; }, 500);
     });
   }
+
+  // Reset Facebook stats — secure 2-step flow
   const resetFbBtn = document.getElementById('resetFbStats');
   if (resetFbBtn) {
-    resetFbBtn.addEventListener('click', () => {
-      if (!confirm('Reset all Facebook stats? This cannot be undone.')) return;
+    resetFbBtn.addEventListener('click', async () => {
+      const confirmed = await showModal({
+        title: 'Reset Facebook Statistics',
+        message: 'This will permanently clear all your Facebook activity statistics. This action cannot be undone.',
+        warning: '⚠️ This action cannot be undone.',
+        buttons: [
+          { text: 'Cancel', type: 'secondary' },
+          { text: 'Continue', type: 'primary' }
+        ]
+      });
+      if (!confirmed) return;
+
+      const typeConfirmed = await showConfirmationInput({
+        title: 'Type to Confirm',
+        message: 'To confirm, please type <strong>RESET FACEBOOK STATS</strong> in the box below:',
+        confirmText: 'RESET FACEBOOK STATS',
+        placeholder: 'Type here...'
+      });
+      if (!typeConfirmed) return;
+
       chrome.storage.local.remove(['fbStats'], () => {
         loadSocialStats();
       });
@@ -1213,7 +1310,30 @@ document.addEventListener('DOMContentLoaded', () => {
   // Load statistics on page load
   loadStatistics();
   loadSocialStats();
-  
-  // Refresh statistics every 30 seconds
+
+  // ── Kebab menu toggle for platform panel actions ─────────────────────────
+  ['ytKebab', 'igKebab', 'fbKebab'].forEach(id => {
+    const btn = document.getElementById(id);
+    if (!btn) return;
+    const menu = btn.nextElementSibling; // .kebab-menu sibling
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      // Close any other open kebab menus first
+      document.querySelectorAll('.kebab-menu.open').forEach(m => { if (m !== menu) m.classList.remove('open'); });
+      menu.classList.toggle('open');
+    });
+  });
+
+  // Close any open kebab menu when clicking outside
+  document.addEventListener('click', () => {
+    document.querySelectorAll('.kebab-menu.open').forEach(m => m.classList.remove('open'));
+  });
+
+  // Close menu immediately when a kebab action item is clicked
+  document.querySelectorAll('.kebab-item').forEach(item => {
+    item.addEventListener('click', () => {
+      document.querySelectorAll('.kebab-menu.open').forEach(m => m.classList.remove('open'));
+    });
+  });
   setInterval(() => { loadStatistics(); loadSocialStats(); }, 30000);
 });
