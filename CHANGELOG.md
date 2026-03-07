@@ -5,6 +5,22 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [3.8.0] — 2026-03-08
+
+### Added
+- **Feature Guide modal** — single `?` button in the popup header opens a scrollable panel listing every setting description grouped by section heading; replaces the previous per-item inline tooltip buttons
+- **Volume slider themed fill** — `Default Volume` slider in the Automation section now renders a left-fill gradient matching the speed slider style
+- **Themed slim scrollbar** — custom 4 px scrollbar with dark-theme colours inside the Feature Guide modal body
+
+### Changed
+- Expand / collapse popup toggle replaced by the Feature Guide `?` button; popup size is now fixed
+- Modal close button colour changed from accent red to a neutral white-outline style to avoid false "danger" affordance
+- Backup-export buttons layout fixed: `flex: 1; min-width: 0` on inner wrapper prevents overflow at narrow widths
+- Number inputs no longer show browser spinner arrows (removed via `-webkit-appearance: none`)
+- Upgraded version to `3.8.0` across `manifest.json`, `popup.html`, `index.html`, and `README.md`
+
+---
+
 ## [3.6.9] — 2026-03-04
 
 ### Added

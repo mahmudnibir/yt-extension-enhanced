@@ -26,6 +26,7 @@
 | Watch Statistics | Track total watch time and session history with a reset option |
 | Keyboard Shortcuts | Fully customizable hotkeys for all controls |
 | Voice Modes | 8 real-time audio modes: Normal, Chipmunk, Pikachu, Naruto, Doraemon, Bass Boost, Robot, Echo |
+| Feature Guide | In-popup `?` button opens a scrollable guide listing all setting descriptions grouped by section |
 
 ---
 

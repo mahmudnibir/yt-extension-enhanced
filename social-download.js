@@ -28,10 +28,121 @@
   const TOAST_ID   = 'yt-ext-dl-toast';
   const LABEL      = isIG ? 'Download Reel' : 'Download Video';
 
-  // Keywords that identify "video options" menus on each platform.
+  // Keywords that identify post-options menus (any post type).
+  // These are broad on purpose — they just confirm this DOM node is a post
+  // options sheet, not a login modal or settings panel.
+  // Whether the post is a video is checked separately via click tracking.
   const MENU_HINTS = isIG
     ? ['save', 'reel', 'copy link', 'report', 'not interested']
-    : ['save video', 'copy link', 'share', 'download video', 'report'];
+    : ['copy link', 'save video', 'report', 'hide post', 'snooze', 'share'];
+
+  // Track the element that was tapped/clicked most recently so we can walk
+  // up to the containing post and verify it has a <video>.
+  let lastClickTarget = null;
+  document.addEventListener('click', (e) => { lastClickTarget = e.target; }, { capture: true, passive: true });
+
+  // ── Resilient sendMessage wrapper ────────────────────────────────────────
+  /**
+   * Wraps chrome.runtime.sendMessage with:
+   *  - Automatic lastError consumption to silence "Unchecked runtime.lastError".
+   *  - One automatic retry (after 300 ms) when the MV3 service worker is asleep
+   *    ("No SW" / "Could not establish connection" errors). Chrome wakes the SW
+   *    on the retry attempt.
+   *
+   * @param {object}   msg      - Message object to send.
+   * @param {function} callback - Called with (response) on success, or (null) on
+   *                              unrecoverable failure.
+   */
+  function sendMsg(msg, callback) {
+    const cb = callback || (() => {});
+    const SW_ERRORS = ['no sw', 'could not establish connection', 'message port closed', 'receiving end does not exist'];
+    const isSWError = (err) => SW_ERRORS.some(s => (err?.message || '').toLowerCase().includes(s));
+
+    const attempt = (isRetry) => {
+      try {
+        chrome.runtime.sendMessage(msg, (res) => {
+          const err = chrome.runtime.lastError; // always consumed
+          if (err) {
+            if (!isRetry && isSWError(err)) {
+              // SW was asleep — give Chrome 300 ms to wake it then retry once.
+              setTimeout(() => attempt(true), 300);
+              return;
+            }
+            cb(null);
+            return;
+          }
+          cb(res);
+        });
+      } catch (_) {
+        cb(null);
+      }
+    };
+
+    attempt(false);
+  }
+
+  // ── Extract a progressive (audio+video) URL from Facebook's page JSON ───
+  /**
+   * Facebook embeds video metadata as JSON inside <script> tags. Progressive
+   * MP4 URLs (browser_native_hd_url, playable_url, etc.) contain a muxed
+   * audio+video stream — unlike DASH segments which carry only one track.
+   *
+   * Checks HD first, then SD, then generic playable URLs. Falls back to null
+   * if the page has no embedded progressive URL (e.g. DASH-only Reels).
+   *
+   * @returns {string|null} HTTP(S) progressive video URL or null
+   */
+  function getFBProgressiveUrl() {
+    // Priority order: confirmed muxed (browser_native_*) → Watch-style HD/SD → quality-tagged → generic.
+    // browser_native_* keys are guaranteed to be muxed progressive MP4s.
+    // hd_src / sd_src are used on FB Watch and classic video posts.
+    // playable_url is a last resort — it may point to a DASH init segment on newer Reels.
+    const patterns = [
+      /"browser_native_hd_url"\s*:\s*"(https?[^"]+)"/,
+      /"browser_native_sd_url"\s*:\s*"(https?[^"]+)"/,
+      /"hd_src_no_ratelimit"\s*:\s*"(https?[^"]+)"/,
+      /"sd_src_no_ratelimit"\s*:\s*"(https?[^"]+)"/,
+      /"hd_src"\s*:\s*"(https?[^"]+)"/,
+      /"sd_src"\s*:\s*"(https?[^"]+)"/,
+      /"playable_url_quality_hd"\s*:\s*"(https?[^"]+)"/,
+      /"playable_url"\s*:\s*"(https?[^"]+)"/,
+    ];
+
+    /**
+     * Decode a raw matched URL string: handles JSON Unicode escapes (\u0026 → &)
+     * and forward-slash escapes (\/ → /), which Facebook frequently uses.
+     */
+    const decodeUrl = (raw) => {
+      try {
+        return JSON.parse(`"${raw}"`);
+      } catch (_) {
+        return raw
+          .replace(/\\u([0-9a-fA-F]{4})/g, (_, h) => String.fromCharCode(parseInt(h, 16)))
+          .replace(/\\\//g, '/');
+      }
+    };
+
+    for (const script of document.querySelectorAll('script')) {
+      const text = script.textContent || '';
+      if (
+        !text.includes('playable_url') &&
+        !text.includes('browser_native') &&
+        !text.includes('hd_src') &&
+        !text.includes('sd_src')
+      ) continue;
+
+      for (const pattern of patterns) {
+        const match = text.match(pattern);
+        if (!match) continue;
+        const url = decodeUrl(match[1]);
+        if (!url.startsWith('http')) continue;
+        // Skip DASH init segments — they are video-only and contain no audio track.
+        if (url.includes('dashinit') || url.includes('dash_init')) continue;
+        return url;
+      }
+    }
+    return null;
+  }
 
   // ── Locate the best playable video URL on the active page ───────────────
   /**
@@ -57,30 +168,84 @@
 
   // ── Dispatch the download via background.js ──────────────────────────────
   /**
-   * Resolves the video URL and sends a message to background.js to trigger
-   * chrome.downloads.download(). Shows a page-level toast with the result.
+   * Resolves the video URL and triggers a local download via background.js.
+   *
+   * Strategy:
+   *  1. (FB only) Parse the page's embedded JSON for a progressive (muxed
+   *     audio+video) MP4 URL — browser_native_hd_url / playable_url etc.
+   *     This is the preferred path because DASH segments are video-only.
+   *  2. Ask background for the CDN URL it intercepted via webRequest — the
+   *     real mp4 URL when <video>.currentSrc is a blob: (MSE player).
+   *  3. Fall back to scanning the DOM for any <video> with a plain http URL
+   *     (works for FB Watch and other non-MSE embeds).
+   *  4. If the only URL found is still a blob, show a clear error.
    */
   function triggerDownload() {
-    const src = getBestVideoSrc();
-
-    if (!src) {
-      showPageToast('❌ No downloadable video found on this page.');
-      return;
-    }
-    if (src.startsWith('blob:')) {
-      showPageToast('❌ This video is DRM-protected and cannot be saved directly.');
-      return;
-    }
-
-    const platform = isIG ? 'instagram' : 'facebook';
-    const filename  = `${platform}_${Date.now()}.mp4`;
-
-    chrome.runtime.sendMessage({ type: 'downloadVideo', url: src, filename }, (res) => {
-      if (chrome.runtime.lastError || !res?.success) {
-        showPageToast('❌ Download failed. Try again.');
-      } else {
-        showPageToast('✅ Download started!');
+    // Step 1 — For Facebook, try to extract a progressive (audio+video) URL
+    // directly from the page's embedded JSON. Progressive MP4s contain both
+    // tracks; the DASH segments captured by webRequest are video-only.
+    if (isFB) {
+      const progressiveUrl = getFBProgressiveUrl();
+      if (progressiveUrl) {
+        const filename = `facebook_${Date.now()}.mp4`;
+        sendMsg({ type: 'downloadVideo', url: progressiveUrl, filename }, (res) => {
+          if (!res?.success) {
+            showPageToast('❌ Download failed. Try again.');
+          } else {
+            showPageToast('✅ Download started!');
+          }
+        });
+        return;
       }
+    }
+
+    // Step 2 — ask the background for the CDN video (and audio) URL captured by webRequest.
+    sendMsg({ type: 'getLastVideoUrl' }, (cdnRes) => {
+      const cachedUrl      = cdnRes?.url      || null;
+      // Audio DASH URL — only present when DASH is used and an audio segment was seen.
+      const cachedAudioUrl = cdnRes?.audioUrl || null;
+
+      // Step 3 — fall back to DOM scan for non-MSE players.
+      const domSrc = getBestVideoSrc();
+
+      // Prefer the intercepted CDN URL; fall back to DOM src.
+      const src = cachedUrl || domSrc;
+
+      if (!src) {
+        showPageToast('❌ No downloadable video found. Let the reel play for a moment, then try again.');
+        return;
+      }
+      if (src.startsWith('blob:')) {
+        showPageToast('❌ Video still loading — wait a moment and try again.');
+        return;
+      }
+
+      // DASH video-only: cachedUrl exists but no plain-HTTP dom source was found.
+      const isDashVideoOnly = !!cachedUrl && !domSrc?.startsWith('http');
+
+      const platform = isIG ? 'instagram' : 'facebook';
+      const ts        = Date.now();
+      const filename  = `${platform}_${ts}.mp4`;
+
+      sendMsg({ type: 'downloadVideo', url: src, filename }, (res) => {
+        if (!res?.success) {
+          showPageToast('❌ Download failed. Try again.');
+          return;
+        }
+
+        // If we only have a DASH video stream AND we also captured the audio stream,
+        // trigger a second automatic download for the audio so the user has both files.
+        if (isDashVideoOnly && cachedAudioUrl) {
+          const audioFilename = `${platform}_${ts}_audio.mp4`;
+          // saveAs: false — auto-saves silently so only the video triggers a Save dialog.
+          sendMsg({ type: 'downloadVideo', url: cachedAudioUrl, filename: audioFilename, saveAs: false }, () => {});
+          showPageToast('⚠️ Saved as 2 files (video + audio) — merge them in any video editor.');
+        } else if (isDashVideoOnly) {
+          showPageToast('⚠️ Download started — audio unavailable (DASH-only reel).');
+        } else {
+          showPageToast('✅ Download started!');
+        }
+      });
     });
   }
 
@@ -121,48 +286,76 @@
     setTimeout(() => { if (t.parentNode) t.remove(); }, 3000);
   }
 
-  // ── Build the injected <button> element ─────────────────────────────────
+  // ── Build the injected menu item element ──────────────────────────────────
   /**
-   * Creates a button styled to visually blend with existing menu items.
-   * Copies font, colour and padding from a reference sibling element so it
-   * automatically adapts to Instagram's and Facebook's theming.
+   * Creates a menu row visually and structurally identical to native items.
+   * Clones the reference element's tag name and class list so it inherits
+   * Facebook/Instagram's own layout and stacking context — this is critical
+   * because a plain <button> can sit in a different stacking layer.
    *
-   * @param {Element|null} referenceItem - An existing menu item to mirror.
-   * @returns {HTMLButtonElement}
+   * Clickability is handled separately by setupClickCapture(), which attaches
+   * window-level capture listeners so the tap fires before any overlay.
+   *
+   * @param {Element|null} referenceItem - An existing sibling menu item.
+   * @returns {HTMLElement}
    */
   function buildDownloadItem(referenceItem) {
-    const item = document.createElement('button');
-    item.id   = ITEM_ID;
-    item.type = 'button';
+    // Clone tag name + class list from the native item so our row is part of
+    // the same CSS stacking / flex context as every other item in the sheet.
+    const tagName = referenceItem ? referenceItem.tagName.toLowerCase() : 'div';
+    const item    = document.createElement(tagName);
+    item.id       = ITEM_ID;
+    if (tagName === 'button') item.type = 'button';
 
-    const ref = referenceItem ? getComputedStyle(referenceItem) : null;
+    // Copy native class list so layout, spacing, and hover styles match exactly
+    if (referenceItem) {
+      referenceItem.classList.forEach(cls => item.classList.add(cls));
+    }
 
+    // Copy ARIA role so screen readers and FB's own event delegation treat it
+    // the same as other interactive items in the sheet.
+    const refRole = referenceItem?.getAttribute('role');
+    item.setAttribute('role', refRole || 'menuitem');
+    item.setAttribute('tabindex', '0');
+
+    // Read computed styles from the reference item for font/spacing parity.
+    // We deliberately do NOT copy padding/display from computed styles because
+    // those are already provided by the cloned class list — overriding them
+    // inline would break the class-driven layout.
+    const ref        = referenceItem ? getComputedStyle(referenceItem) : null;
+    const fontSize   = ref?.fontSize   || '15px';
+    const fontFamily = ref?.fontFamily ||
+      '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+    const minHeight  = ref?.minHeight && ref.minHeight !== '0px' ? ref.minHeight : '48px';
+
+    // Only apply styles that the cloned classes may not cover.
     Object.assign(item.style, {
-      display:    'flex',
-      alignItems: 'center',
-      gap:        '12px',
-      width:      '100%',
-      padding:    ref ? ref.padding : '12px 16px',
-      background: 'transparent',
-      border:     'none',
-      cursor:     'pointer',
-      fontSize:   ref ? ref.fontSize   : '14px',
-      fontWeight: ref ? ref.fontWeight  : '400',
-      color:      ref ? ref.color       : '#ffffff',
-      textAlign:  'left',
-      fontFamily: ref
-        ? ref.fontFamily
-        : '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-      lineHeight:  '1.4',
-      boxSizing:   'border-box',
+      display:                 'flex',
+      alignItems:              'center',
+      gap:                     '16px',
+      width:                   '100%',
+      minHeight,
+      padding:                 ref?.padding || '12px 16px',
+      background:              'transparent',
+      border:                  'none',
+      cursor:                  'pointer',
+      fontSize,
+      fontWeight:              '400',
+      color:                   '#ffffff',
+      textAlign:               'left',
+      fontFamily,
+      lineHeight:              '1.4',
+      boxSizing:               'border-box',
+      userSelect:              'none',
+      WebkitTapHighlightColor: 'transparent',
     });
 
-    // Download arrow icon (clean outline style, matches IG/FB aesthetic)
+    // 24 px icon matches native IG/FB menu icon sizing
     item.innerHTML = `
-      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18"
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
            viewBox="0 0 24 24" fill="none" stroke="currentColor"
-           stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"
-           style="flex-shrink:0;opacity:0.85">
+           stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"
+           aria-hidden="true" style="flex-shrink:0;opacity:0.9;display:block">
         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
         <polyline points="7 10 12 15 17 10"/>
         <line x1="12" y1="15" x2="12" y2="3"/>
@@ -175,20 +368,99 @@
     item.addEventListener('mouseleave', () => {
       item.style.background = 'transparent';
     });
-    item.addEventListener('click', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      triggerDownload();
-    });
 
     return item;
   }
 
-  // ── Check whether a node looks like a video options menu ─────────────────
+  // ── Window-level capture handler for the download button ─────────────────
+  /**
+   * Facebook's Reels feed has a fullscreen overlay (for swipe-to-next handling)
+   * that sits above the menu in the paint order. Because the overlay wins the
+   * CSS hit-test, events dispatched to it — not to our button — regardless of
+   * z-index or stopPropagation on the button itself.
+   *
+   * The only reliable fix is to listen at the window level in the CAPTURE phase,
+   * which fires before ANY element on the page receives the event, and then
+   * check whether the tap coordinates fall within our button's bounding rect.
+   *
+   * Registers mousedown (desktop) and touchstart (mobile/touch). Automatically
+   * removes itself once the button leaves the DOM.
+   *
+   * @param {HTMLElement} item - The injected download button.
+   */
+  function setupClickCapture(item) {
+    const handler = (e) => {
+      // Remove listeners as soon as the item is gone
+      if (!item.isConnected) {
+        window.removeEventListener('mousedown',  handler, true);
+        window.removeEventListener('touchstart', handler, true);
+        return;
+      }
+
+      const rect = item.getBoundingClientRect();
+      // If the rect is zero the item isn't painted yet — skip
+      if (!rect.width || !rect.height) return;
+
+      // Resolve tap coordinates for both mouse and touch
+      const cx = e.clientX  ?? e.touches?.[0]?.clientX  ?? -1;
+      const cy = e.clientY  ?? e.touches?.[0]?.clientY  ?? -1;
+
+      if (cx >= rect.left && cx <= rect.right && cy >= rect.top && cy <= rect.bottom) {
+        // Hit! Stop the event so the overlay doesn't also handle it.
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        triggerDownload();
+      }
+    };
+
+    window.addEventListener('mousedown',  handler, true);
+    // passive: false so we can call stopImmediatePropagation on touchstart
+    window.addEventListener('touchstart', handler, { capture: true, passive: false });
+
+    // Lightweight cleanup poll — cheaper than a full MutationObserver
+    const poll = setInterval(() => {
+      if (!item.isConnected) {
+        window.removeEventListener('mousedown',  handler, true);
+        window.removeEventListener('touchstart', handler, true);
+        clearInterval(poll);
+      }
+    }, 500);
+  }
+
+  // ── Check if the last 3-dot click came from inside a video post ──────────
+  /**
+   * Walks up the DOM from the last clicked element (the 3-dot button) to find
+   * the containing post/article node and checks whether it has a meaningful
+   * <video> element. This is the authoritative video-post guard:
+   * - Text/image posts have no <video> → returns false → no button injected.
+   * - Video posts have a <video> in their container → returns true.
+   *
+   * Falls back to true on full-screen Reel/Watch pages where the whole
+   * viewport is the video context (lastClickTarget may be outside a post div).
+   *
+   * @returns {boolean}
+   */
+  function lastClickWasOnVideoPost() {
+    if (!lastClickTarget) return false;
+    let el = lastClickTarget;
+    for (let depth = 0; depth < 25; depth++) {
+      if (!el || el === document.documentElement) break;
+      // Check each ancestor for an embedded <video> with real content.
+      for (const v of el.querySelectorAll('video')) {
+        const src = v.currentSrc || v.src || '';
+        if (src.startsWith('http') || src.startsWith('blob:') || v.duration > 0) return true;
+      }
+      el = el.parentElement;
+    }
+    return false;
+  }
+
+  // ── Check whether a node looks like a post-options menu ──────────────────
   /**
    * Returns true when the node's text content contains at least one of the
-   * expected platform-specific phrases, indicating it is the video-options
-   * bottom-sheet and not an unrelated dialog (login modal, etc.).
+   * known post-menu phrases. This confirms the node is a post options sheet,
+   * not a login dialog or settings panel. Whether it is specifically a video
+   * post is determined by lastClickWasOnVideoPost().
    *
    * @param {Element} node
    * @returns {boolean}
@@ -210,7 +482,13 @@
     // Skip if already injected into this node's subtree
     if (menuNode.querySelector('#' + ITEM_ID)) return;
 
+    // Only inject when the menu text signals a video post
     if (!isVideoOptionsMenu(menuNode)) return;
+
+    // Secondary guard: only inject when the 3-dot tap came from a post that
+    // contains a <video> element. This is the key check that differentiates
+    // text/image posts (no video in their container) from video posts.
+    if (!lastClickWasOnVideoPost()) return;
 
     // Collect interactive items (buttons / role=button / role=menuitem)
     const items = Array.from(
@@ -225,6 +503,10 @@
 
     // Insert before the first real menu item
     firstItem.parentNode.insertBefore(dlItem, firstItem);
+
+    // Attach window-level click capture so the button works even when
+    // Facebook's fullscreen overlay intercepts the hit-test.
+    setupClickCapture(dlItem);
   }
 
   // ── MutationObserver — watch for new modal / menu nodes ──────────────────
@@ -248,4 +530,127 @@
 
   // Observe the entire document — menus are often mounted at the root level
   observer.observe(document.documentElement, { childList: true, subtree: true });
+
+  // ── Reel / video play tracking ────────────────────────────────────────────
+  /**
+   * Tracks each distinct reel/video the user watches and increments the
+   * daily `videosWatched` counter in storage via background.js.
+   *
+   * Debounce rules (per <video> element):
+   *  - A "new play" is only counted when the element has not been counted
+   *    within the last 30 seconds — this prevents loops from inflating the
+   *    count while still crediting re-watching the same clip after a decent gap.
+   *  - Short gifs / avatars (duration ≤ 3 s and looping) are skipped entirely.
+   */
+  const domain = isIG ? 'ig' : 'fb';
+
+  // WeakMap<HTMLVideoElement, number> — timestamp (ms) of the last counted play
+  const lastCountedAt = new WeakMap();
+  const PLAY_COOLDOWN_MS = 30_000; // 30 seconds
+
+  /**
+   * Attaches a `play` listener to a <video> element if not already attached.
+   * Uses a flag property to prevent double-attachment on the same node.
+   *
+   * @param {HTMLVideoElement} videoEl
+   */
+  function attachPlayTracker(videoEl) {
+    if (videoEl._ytExtTracked) return;
+    videoEl._ytExtTracked = true;
+
+    videoEl.addEventListener('play', () => {
+      // Skip very short looping ambient clips (avatars, story rings, etc.)
+      if (videoEl.loop && videoEl.duration > 0 && videoEl.duration <= 3) return;
+
+      const now = Date.now();
+      const last = lastCountedAt.get(videoEl) || 0;
+      if (now - last < PLAY_COOLDOWN_MS) return; // same reel looping — skip
+
+      lastCountedAt.set(videoEl, now);
+      sendMsg({ type: 'socialVideoPlay', domain }, () => {});
+    });
+  }
+
+  // Attach to all videos already in the DOM at injection time
+  document.querySelectorAll('video').forEach(attachPlayTracker);
+
+  // Watch for video elements added dynamically (SPA navigation, lazy loading)
+  const videoObserver = new MutationObserver((mutations) => {
+    for (const mut of mutations) {
+      for (const node of mut.addedNodes) {
+        if (node.nodeType !== 1) continue;
+        if (node.tagName === 'VIDEO') {
+          attachPlayTracker(/** @type {HTMLVideoElement} */ (node));
+        }
+        node.querySelectorAll('video').forEach(attachPlayTracker);
+      }
+    }
+  });
+
+  videoObserver.observe(document.documentElement, { childList: true, subtree: true });
+
+  // ── Scroll Tracking (F15) ────────────────────────────────────────────────
+  // Count discrete scroll gestures and flush to background every 10 seconds.
+  let scrollCount = 0;
+  let scrollFlushing = false;
+
+  const onScroll = () => { scrollCount++; };
+  window.addEventListener('scroll', onScroll, { passive: true });
+
+  setInterval(() => {
+    if (scrollCount === 0 || scrollFlushing) return;
+    const count = scrollCount;
+    scrollCount = 0;
+    scrollFlushing = true;
+    sendMsg({ type: 'socialScrollUpdate', domain, count }, () => { scrollFlushing = false; });
+  }, 10_000);
+
+  // ── Screen Time Limit Block (F1) ─────────────────────────────────────────
+  // Listen for a `timeLimitHit` message from background.js and show a soft-block.
+  chrome.runtime.onMessage.addListener((request) => {
+    if (request.action === 'timeLimitHit') {
+      showSocialTimeLimitOverlay(domain === 'ig' ? 'Instagram' : 'Facebook');
+    }
+  });
+
+  /**
+   * Shows a full-page soft-block overlay when the daily screen time limit fires.
+   * The user can dismiss it and continue — it's a nudge, not a hard lock.
+   * @param {string} platformName - human-readable platform name
+   */
+  function showSocialTimeLimitOverlay(platformName) {
+    const existing = document.getElementById('yt-ext-time-limit');
+    if (existing) return;
+
+    const overlay = document.createElement('div');
+    overlay.id = 'yt-ext-time-limit';
+    Object.assign(overlay.style, {
+      position: 'fixed', inset: '0',
+      background: 'rgba(0,0,0,0.88)',
+      display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'center',
+      zIndex: '2147483647',
+      fontFamily: 'Inter, -apple-system, sans-serif',
+      color: '#fff', textAlign: 'center',
+      backdropFilter: 'blur(4px)',
+    });
+
+    overlay.innerHTML = `
+      <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.45)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom:20px">
+        <circle cx="12" cy="12" r="10"></circle>
+        <polyline points="12 6 12 12 16 14"></polyline>
+      </svg>
+      <div style="font-size:22px;font-weight:700;margin-bottom:10px">Daily Limit Reached</div>
+      <div style="font-size:14px;color:rgba(255,255,255,0.5);max-width:300px;line-height:1.6;margin-bottom:28px">
+        You've hit your daily ${platformName} screen time limit. Take a break!
+      </div>
+      <button id="yt-ext-limit-dismiss" style="background:#ff0000;border:none;color:#fff;border-radius:8px;padding:10px 24px;font-size:14px;cursor:pointer;font-family:inherit">
+        Keep Scrolling Anyway
+      </button>
+      <div style="font-size:11px;margin-top:12px;color:rgba(255,255,255,0.3)">Limit set in YT Enhanced → Advanced</div>
+    `;
+
+    document.body.appendChild(overlay);
+    document.getElementById('yt-ext-limit-dismiss').onclick = () => overlay.remove();
+  }
 })();

@@ -1,6 +1,65 @@
 document.addEventListener('DOMContentLoaded', () => {
 
-  // --- Whole-card toggle UX --------------------------------------------------
+  // ── ? Help modal ───────────────────────────────────────────────────────────────────────
+  // The ? button in the header opens a scrollable panel listing every setting
+  // description grouped by its section heading.
+  const expandToggle = document.getElementById('expandToggle');
+  expandToggle.addEventListener('click', () => {
+    // Build grouped list from all hidden .setting-desc elements
+    const sections = [];
+    document.querySelectorAll('section').forEach(sec => {
+      const heading = sec.querySelector('h2');
+      if (!heading) return;
+      const items = [];
+      sec.querySelectorAll('.setting-content').forEach(content => {
+        const title = content.querySelector('.setting-title');
+        const desc  = content.querySelector('.setting-desc');
+        if (title && desc && desc.textContent.trim()) {
+          items.push({ title: title.textContent.trim(), desc: desc.textContent.trim() });
+        }
+      });
+      if (items.length) sections.push({ heading: heading.textContent.trim(), items });
+    });
+
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML = `
+      <div class="modal" style="max-height:80vh;display:flex;flex-direction:column;">
+        <div class="modal-header">
+          <div class="modal-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+              <line x1="12" y1="17" x2="12.01" y2="17"></line>
+            </svg>
+          </div>
+          <div class="modal-title">Feature Guide</div>
+        </div>
+        <div class="modal-body" id="helpGuideBody" style="overflow-y:auto;flex:1;">
+          ${sections.map(s => `
+            <div style="margin-bottom:14px;">
+              <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:rgba(255,255,255,0.35);margin-bottom:6px;">${s.heading}</div>
+              ${s.items.map(it => `
+                <div style="display:flex;gap:8px;margin-bottom:5px;align-items:baseline;">
+                  <span style="color:rgba(255,255,255,0.85);font-size:11px;font-weight:500;white-space:nowrap;">${it.title}</span>
+                  <span style="color:rgba(255,255,255,0.4);font-size:10px;flex:1;">— ${it.desc}</span>
+                </div>
+              `).join('')}
+            </div>
+          `).join('')}
+        </div>
+        <div class="modal-actions">
+          <button class="modal-btn modal-btn-neutral" id="helpClose">Close</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    overlay.querySelector('#helpClose').addEventListener('click', () => overlay.remove());
+    overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  });
+  // ─────────────────────────────────────────────────────────────────────────
+
+  // Keyboard navigation
   // Clicking anywhere on a .setting-item-full row toggles its checkbox,
   // unless the click already landed on the toggle-label/input (natural toggle).
   document.querySelectorAll('.setting-item-full').forEach(card => {
@@ -315,6 +374,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const exportBookmarksBtn = document.getElementById('exportBookmarksBtn');
   const importBookmarksBtn = document.getElementById('importBookmarksBtn');
   const importBookmarksFile = document.getElementById('importBookmarksFile');
+  const sponsorBlockCheckbox      = document.getElementById('sponsorBlock');
+  const sleepTimerEnabledCheckbox = document.getElementById('sleepTimerEnabled');
+  const sleepTimerRow             = document.getElementById('sleepTimerRow');
+  const sleepTimerMinutesInput    = document.getElementById('sleepTimerMinutes');
+  const setSleepTimerBtn          = document.getElementById('setSleepTimerBtn');
 
   /**
    * Builds a select-like proxy object around the custom div dropdown.
@@ -396,6 +460,9 @@ document.addEventListener('DOMContentLoaded', () => {
     autoFullscreen: false,
     autoSubtitles: false,
     focusMode: false,
+    sponsorBlock: false,
+    sleepTimerEnabled: false,
+    sleepTimerMinutes: 30,
   };
 
   // Update speed display with enhanced formatting + progress-bar fill
@@ -406,6 +473,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const pct = ((speed - 0.25) / (20 - 0.25)) * 100;
     const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent-color').trim() || '#ff0000';
     speedInput.style.background = `linear-gradient(to right, ${accent} ${pct}%, var(--border-color) ${pct}%)`;
+  };
+
+  /** Updates the left-fill gradient on the volume slider to match its current value. */
+  const updateVolumeFill = (value) => {
+    const pct = Math.min(100, Math.max(0, parseFloat(value)));
+    const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent-color').trim() || '#ff0000';
+    defaultVolumeInput.style.background = `linear-gradient(to right, ${accent} ${pct}%, var(--border-color) ${pct}%)`;
   };
 
   // Load stored settings with animation
@@ -429,10 +503,15 @@ document.addEventListener('DOMContentLoaded', () => {
     defaultVolumeEnabledCheckbox.checked = data.defaultVolumeEnabled || false;
     defaultVolumeInput.value = data.defaultVolume !== undefined ? data.defaultVolume : 80;
     defaultVolumeDisplay.textContent = `${defaultVolumeInput.value}%`;
+    updateVolumeFill(defaultVolumeInput.value);
     autoTheaterCheckbox.checked = data.autoTheater || false;
     autoFullscreenCheckbox.checked = data.autoFullscreen || false;
     autoSubtitlesCheckbox.checked = data.autoSubtitles || false;
     focusModeCheckbox.checked = data.focusMode || false;
+    if (sponsorBlockCheckbox) sponsorBlockCheckbox.checked = data.sponsorBlock || false;
+    if (sleepTimerEnabledCheckbox) sleepTimerEnabledCheckbox.checked = data.sleepTimerEnabled || false;
+    if (sleepTimerMinutesInput) sleepTimerMinutesInput.value = data.sleepTimerMinutes || 30;
+    if (sleepTimerRow) sleepTimerRow.style.display = data.sleepTimerEnabled ? 'flex' : 'none';
 
     // Load universalSpeed from local storage (used by video-hover.js)
     chrome.storage.local.get(['universalSpeed'], (localData) => {
@@ -467,6 +546,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const autoFullscreen = !!autoFullscreenCheckbox.checked;
     const autoSubtitles = !!autoSubtitlesCheckbox.checked;
     const focusMode = !!focusModeCheckbox.checked;
+    const sponsorBlock = !!(sponsorBlockCheckbox && sponsorBlockCheckbox.checked);
 
     // Save universalSpeed to local storage so video-hover.js can read it
     chrome.storage.local.set({ universalSpeed });
@@ -489,6 +569,7 @@ document.addEventListener('DOMContentLoaded', () => {
       autoFullscreen,
       autoSubtitles,
       focusMode,
+      sponsorBlock,
     }, () => {
       // Notify content script to apply changes and update speed immediately
       chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
@@ -534,12 +615,26 @@ document.addEventListener('DOMContentLoaded', () => {
   defaultVolumeEnabledCheckbox.addEventListener('change', autoSave);
   defaultVolumeInput.addEventListener('input', () => {
     defaultVolumeDisplay.textContent = `${defaultVolumeInput.value}%`;
+    updateVolumeFill(defaultVolumeInput.value);
     autoSave();
   });
   autoTheaterCheckbox.addEventListener('change', autoSave);
   autoFullscreenCheckbox.addEventListener('change', autoSave);
   autoSubtitlesCheckbox.addEventListener('change', autoSave);
   focusModeCheckbox.addEventListener('change', autoSave);
+  if (sponsorBlockCheckbox) sponsorBlockCheckbox.addEventListener('change', autoSave);
+  if (sleepTimerEnabledCheckbox) sleepTimerEnabledCheckbox.addEventListener('change', () => {
+    if (sleepTimerRow) sleepTimerRow.style.display = sleepTimerEnabledCheckbox.checked ? 'flex' : 'none';
+    autoSave();
+  });
+  if (setSleepTimerBtn) setSleepTimerBtn.addEventListener('click', () => {
+    const mins = parseInt(sleepTimerMinutesInput.value, 10) || 30;
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (tabs[0]) chrome.tabs.sendMessage(tabs[0].id, { action: 'setSleepTimer', minutes: mins }).catch(() => {});
+    });
+    chrome.storage.sync.set({ sleepTimerMinutes: mins, sleepTimerEnabled: true });
+    if (sleepTimerEnabledCheckbox) sleepTimerEnabledCheckbox.checked = true;
+  });
 
   // Speed tick labels (replaces preset buttons)
   function syncSpeedTicks(speed) {
@@ -576,7 +671,7 @@ document.addEventListener('DOMContentLoaded', () => {
           const bookmarkData = data.bookmarks || {};
           const keys = Object.keys(bookmarkData).filter(k => k.startsWith('yt_bm_'));
           if (keys.length === 0) {
-            alert('No bookmarks found in this file.');
+            showModal({ title: 'Import', message: 'No bookmarks found in this file.', buttons: [{ text: 'OK', type: 'primary' }] });
             return;
           }
           chrome.storage.sync.get(['cloudSync'], (result) => {
@@ -586,14 +681,14 @@ document.addEventListener('DOMContentLoaded', () => {
             keys.forEach(k => { toStore[k] = bookmarkData[k]; });
             storage.set(toStore, () => {
               if (chrome.runtime.lastError) {
-                alert(`Import failed: ${chrome.runtime.lastError.message}`);
+                showModal({ title: 'Import Failed', message: `Import failed: ${chrome.runtime.lastError.message}`, buttons: [{ text: 'OK', type: 'primary' }] });
               } else {
-                alert(`✅ Imported ${keys.length} video(s) of bookmarks successfully!`);
+                showModal({ title: 'Import Successful', message: `✅ Imported ${keys.length} video(s) of bookmarks successfully!`, buttons: [{ text: 'OK', type: 'primary' }] });
               }
             });
           });
         } catch {
-          alert('Invalid backup file. Please select a valid YT Enhanced backup JSON.');
+          showModal({ title: 'Invalid File', message: 'Invalid backup file. Please select a valid YT Enhanced backup JSON.', buttons: [{ text: 'OK', type: 'primary' }] });
         }
         // Reset input so the same file can be re-selected
         importBookmarksFile.value = '';
@@ -676,13 +771,13 @@ document.addEventListener('DOMContentLoaded', () => {
         // Copy to target storage
         targetStorage.set(bookmarkData, () => {
           if (chrome.runtime.lastError) {
-            alert(`⚠️ Migration failed: ${chrome.runtime.lastError.message}\n\nYou may have too many bookmarks for cloud sync. Try removing some first.`);
+            showModal({ title: 'Migration Failed', message: `⚠️ Migration failed: ${chrome.runtime.lastError.message}. You may have too many bookmarks for cloud sync. Try removing some first.`, buttons: [{ text: 'OK', type: 'primary' }] });
             cloudSyncCheckbox.checked = !toCloudSync;
             updateCloudSyncDesc(!toCloudSync);
           } else {
             // Remove from source storage
             sourceStorage.remove(Object.keys(bookmarkData), () => {
-              alert(`✅ Successfully migrated ${Object.keys(bookmarkData).length} video(s) of bookmarks to ${toCloudSync ? 'cloud sync' : 'local storage'}!`);
+              showModal({ title: 'Migration Successful', message: `✅ Successfully migrated ${Object.keys(bookmarkData).length} video(s) of bookmarks to ${toCloudSync ? 'cloud sync' : 'local storage'}!`, buttons: [{ text: 'OK', type: 'primary' }] });
             });
           }
           resolve();
@@ -836,50 +931,6 @@ document.addEventListener('DOMContentLoaded', () => {
           }
         });
       });
-    });
-  });
-
-  // Expand toggle — grows popup to give more room, persists state
-  const expandToggle = document.getElementById('expandToggle');
-  const SIZES = {
-    normal:   { w: 380, h: 580 },
-    expanded: { w: 460, h: 680 }
-  };
-
-  const applySize = (expanded) => {
-    const s = expanded ? SIZES.expanded : SIZES.normal;
-    document.body.style.width  = s.w + 'px';
-    document.body.style.height = s.h + 'px';
-    // Clamp the html element to the same size to suppress browser-level scrollbar
-    document.documentElement.style.width  = s.w + 'px';
-    document.documentElement.style.height = s.h + 'px';
-    // Swap icon between expand and collapse arrows
-    expandToggle.innerHTML = expanded
-      ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-           <polyline points="4 14 10 14 10 20"></polyline>
-           <polyline points="20 10 14 10 14 4"></polyline>
-           <line x1="10" y1="14" x2="3" y2="21"></line>
-           <line x1="21" y1="3" x2="14" y2="10"></line>
-         </svg>`
-      : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-           <polyline points="15 3 21 3 21 9"></polyline>
-           <polyline points="9 21 3 21 3 15"></polyline>
-           <line x1="21" y1="3" x2="14" y2="10"></line>
-           <line x1="3" y1="21" x2="10" y2="14"></line>
-         </svg>`;
-    expandToggle.title = expanded ? 'Collapse popup' : 'Expand popup';
-  };
-
-  // Restore saved expand state
-  chrome.storage.local.get(['popupExpanded'], (data) => {
-    applySize(!!data.popupExpanded);
-  });
-
-  expandToggle.addEventListener('click', () => {
-    chrome.storage.local.get(['popupExpanded'], (data) => {
-      const next = !data.popupExpanded;
-      chrome.storage.local.set({ popupExpanded: next });
-      applySize(next);
     });
   });
 
@@ -1236,6 +1287,32 @@ document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('weekVideos').textContent = weekVideos;
       document.getElementById('weekTime').textContent = formatTimeShort(weekTime);
       document.getElementById('weekSaved').textContent = formatTimeShort(weekSaved);
+
+      // Week-over-week delta: compare current 7 days vs the prior 7 days
+      const twoWeeksAgo = new Date();
+      twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
+      let prevVideos = 0, prevTime = 0, prevSaved = 0;
+      Object.keys(stats.dailyStats).forEach(dateStr => {
+        const d = new Date(dateStr);
+        if (d >= twoWeeksAgo && d < weekAgo) {
+          prevVideos += stats.dailyStats[dateStr].videos    || 0;
+          prevTime   += stats.dailyStats[dateStr].watchTime || 0;
+          prevSaved  += stats.dailyStats[dateStr].timeSaved || 0;
+        }
+      });
+      /** Renders a percentage-change delta badge into an element. */
+      function setYtDelta(id, cur, prev) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        if (prev === 0 && cur === 0) { el.textContent = ''; el.className = 'stat-delta flat'; return; }
+        if (prev === 0) { el.textContent = 'new'; el.className = 'stat-delta up'; return; }
+        const pct = Math.round(((cur - prev) / prev) * 100);
+        el.textContent = pct >= 0 ? `+${pct}%` : `${pct}%`;
+        el.className = `stat-delta ${pct > 0 ? 'up' : pct < 0 ? 'down' : 'flat'}`;
+      }
+      setYtDelta('ytDeltaVideos', weekVideos, prevVideos);
+      setYtDelta('ytDeltaTime',   weekTime,   prevTime);
+      setYtDelta('ytDeltaSaved',  weekSaved,  prevSaved);
     });
   }
 
@@ -1295,6 +1372,32 @@ document.addEventListener('DOMContentLoaded', () => {
       return { videos, time };
     }
 
+    /** Sums the 7 days immediately before the current week (days 8-14). */
+    function sumPrevWeek(dailyData) {
+      const prevWeekStart = new Date();
+      prevWeekStart.setDate(prevWeekStart.getDate() - 14);
+      let videos = 0, time = 0;
+      Object.keys(dailyData).forEach(dateStr => {
+        const d = new Date(dateStr);
+        if (d >= prevWeekStart && d < weekAgo) {
+          videos += dailyData[dateStr].videosWatched || 0;
+          time   += dailyData[dateStr].activeTime    || 0;
+        }
+      });
+      return { videos, time };
+    }
+
+    /** Renders a percentage-change delta badge into a .stat-delta element. */
+    function setSocialDelta(id, cur, prev) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      if (prev === 0 && cur === 0) { el.textContent = ''; el.className = 'stat-delta flat'; return; }
+      if (prev === 0) { el.textContent = 'new'; el.className = 'stat-delta up'; return; }
+      const pct = Math.round(((cur - prev) / prev) * 100);
+      el.textContent = pct >= 0 ? `+${pct}%` : `${pct}%`;
+      el.className = `stat-delta ${pct > 0 ? 'up' : pct < 0 ? 'down' : 'flat'}`;
+    }
+
     // Instagram
     chrome.storage.local.get(['igStats'], (data) => {
       const daily = (data.igStats || {}).dailyData || {};
@@ -1314,10 +1417,14 @@ document.addEventListener('DOMContentLoaded', () => {
       set('ig-week-reels',      week.videos);
       set('ig-week-time',       formatTimeShort(week.time / 60));
       set('ig-week-chat',       formatTimeShort(week.chat / 60));
+      set('ig-scroll-count',    todayD.scrollCount || 0);
       const igDate = document.getElementById('ig-today-date');
       if (igDate) igDate.textContent = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
       igStatsData = daily;
       setTimeout(() => drawGraph(igStatsData, igRange.value, document.getElementById('igStatsGraph'), 'videosWatched'), 50);
+      const igPrev = sumPrevWeek(daily);
+      setSocialDelta('igDeltaReels', week.videos, igPrev.videos);
+      setSocialDelta('igDeltaTime',  week.time,   igPrev.time);
     });
 
     // Facebook
@@ -1339,10 +1446,14 @@ document.addEventListener('DOMContentLoaded', () => {
       set('fb-week-videos',     week.videos);
       set('fb-week-time',       formatTimeShort(week.time / 60));
       set('fb-week-chat',       formatTimeShort(week.chat / 60));
+      set('fb-scroll-count',    todayD.scrollCount || 0);
       const fbDate = document.getElementById('fb-today-date');
       if (fbDate) fbDate.textContent = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
       fbStatsData = daily;
       setTimeout(() => drawGraph(fbStatsData, fbRange.value, document.getElementById('fbStatsGraph'), 'videosWatched'), 50);
+      const fbPrev = sumPrevWeek(daily);
+      setSocialDelta('fbDeltaVideos', week.videos, fbPrev.videos);
+      setSocialDelta('fbDeltaTime',   week.time,   fbPrev.time);
     });
   }
 
@@ -1482,5 +1593,120 @@ document.addEventListener('DOMContentLoaded', () => {
       document.querySelectorAll('.kebab-menu.open').forEach(m => m.classList.remove('open'));
     });
   });
+  // ── Export platform stats as CSV ─────────────────────────────────────────
+  /**
+   * Downloads the stored daily stats for a platform as a CSV file.
+   * @param {'yt'|'ig'|'fb'} platform
+   */
+  function exportStatsCSV(platform) {
+    const key = platform === 'yt' ? 'statistics' : `${platform}Stats`;
+    chrome.storage.local.get([key], (data) => {
+      const stats = data[key];
+      if (!stats) {
+        showModal({ title: 'No Data', message: 'No statistics found to export.', buttons: [{ text: 'OK', type: 'primary' }] });
+        return;
+      }
+      let rows;
+      if (platform === 'yt') {
+        rows = [['Date', 'Videos', 'WatchTime(min)', 'AvgSpeed', 'TimeSaved(min)']];
+        Object.entries(stats.dailyStats || {}).forEach(([d, v]) => {
+          const avg = v.videos > 0 ? (v.totalSpeed / v.videos).toFixed(2) : (v.avgSpeed || 1).toFixed(2);
+          rows.push([d, v.videos || 0, (v.watchTime || 0).toFixed(1), avg, (v.timeSaved || 0).toFixed(1)]);
+        });
+      } else {
+        rows = [['Date', 'Videos/Reels', 'ActiveTime(min)', 'ChatTime(min)', 'ScrollCount']];
+        Object.entries(stats.dailyData || {}).forEach(([d, v]) => {
+          rows.push([d, v.videosWatched || 0, ((v.activeTime || 0) / 60).toFixed(1), ((v.chatTime || 0) / 60).toFixed(1), v.scrollCount || 0]);
+        });
+      }
+      // Wrap each cell in quotes and escape inner quotes for RFC 4180 compliance
+      const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+      const a = document.createElement('a');
+      a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+      a.download = `${platform}_stats_${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+    });
+  }
+
+  // ── Full backup export ────────────────────────────────────────────────────
+  /** Exports all sync + local storage as a single JSON backup file. */
+  async function exportFullBackup() {
+    const [syncData, localData] = await Promise.all([
+      new Promise(r => chrome.storage.sync.get(null, r)),
+      new Promise(r => chrome.storage.local.get(null, r)),
+    ]);
+    const backup = { version: 1, date: new Date().toISOString(), sync: syncData, local: localData };
+    const a = document.createElement('a');
+    a.href = 'data:application/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(backup, null, 2));
+    a.download = `yt_enhanced_backup_${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+  }
+
+  // ── Full backup import ────────────────────────────────────────────────────
+  /** Reads a JSON backup file and restores both sync and local storage. */
+  async function importFullBackup(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const backup = JSON.parse(text);
+      if (!backup.sync && !backup.local) {
+        await showModal({ title: 'Invalid Backup', message: 'This file is not a valid YT Enhanced backup.', buttons: [{ text: 'OK', type: 'primary' }] });
+        e.target.value = '';
+        return;
+      }
+      const confirmed = await showModal({
+        title: 'Restore Backup',
+        message: `Restore backup dated ${new Date(backup.date).toLocaleDateString()}? This will overwrite all current settings and statistics.`,
+        warning: '⚠️ This cannot be undone.',
+        buttons: [{ text: 'Cancel', type: 'secondary' }, { text: 'Restore', type: 'primary' }],
+      });
+      if (!confirmed) { e.target.value = ''; return; }
+      if (backup.sync)  await new Promise(r => chrome.storage.sync.set(backup.sync, r));
+      if (backup.local) await new Promise(r => chrome.storage.local.set(backup.local, r));
+      await showModal({ title: 'Restored!', message: 'Backup restored successfully. Reloading...', buttons: [{ text: 'OK', type: 'primary' }] });
+      window.location.reload();
+    } catch {
+      await showModal({ title: 'Error', message: 'Failed to parse backup file. Please select a valid YT Enhanced backup JSON.', buttons: [{ text: 'OK', type: 'primary' }] });
+    }
+    e.target.value = '';
+  }
+
+  // ── Screen time limits ────────────────────────────────────────────────────
+  /** Persists the screen time limit values entered in the Advanced tab. */
+  function saveScreenTimeLimits() {
+    const el = id => document.getElementById(id);
+    chrome.storage.sync.set({
+      ytLimitEnabled: !!el('ytLimitEnabled')?.checked,
+      ytDailyLimit:    parseInt(el('ytDailyLimit')?.value,  10) || 120,
+      igLimitEnabled: !!el('igLimitEnabled')?.checked,
+      igDailyLimit:    parseInt(el('igDailyLimit')?.value,  10) || 60,
+      fbLimitEnabled: !!el('fbLimitEnabled')?.checked,
+      fbDailyLimit:    parseInt(el('fbDailyLimit')?.value,  10) || 60,
+    }, () => {
+      showModal({ title: 'Saved', message: 'Screen time limits saved successfully!', buttons: [{ text: 'OK', type: 'primary' }] });
+    });
+  }
+
+  // Load screen time limit values on popup open
+  chrome.storage.sync.get(['ytLimitEnabled', 'ytDailyLimit', 'igLimitEnabled', 'igDailyLimit', 'fbLimitEnabled', 'fbDailyLimit'], (d) => {
+    const el = id => document.getElementById(id);
+    if (el('ytLimitEnabled')) el('ytLimitEnabled').checked = !!d.ytLimitEnabled;
+    if (el('ytDailyLimit'))   el('ytDailyLimit').value    = d.ytDailyLimit  || 120;
+    if (el('igLimitEnabled')) el('igLimitEnabled').checked = !!d.igLimitEnabled;
+    if (el('igDailyLimit'))   el('igDailyLimit').value    = d.igDailyLimit  || 60;
+    if (el('fbLimitEnabled')) el('fbLimitEnabled').checked = !!d.fbLimitEnabled;
+    if (el('fbDailyLimit'))   el('fbDailyLimit').value    = d.fbDailyLimit  || 60;
+  });
+
+  // ── Additional feature event listeners ───────────────────────────────────
+  document.getElementById('exportYtCsv')?.addEventListener('click', () => exportStatsCSV('yt'));
+  document.getElementById('exportIgCsv')?.addEventListener('click', () => exportStatsCSV('ig'));
+  document.getElementById('exportFbCsv')?.addEventListener('click', () => exportStatsCSV('fb'));
+  document.getElementById('exportBackupBtn')?.addEventListener('click', exportFullBackup);
+  document.getElementById('restoreBackupBtn')?.addEventListener('click', () => document.getElementById('restoreBackupFile')?.click());
+  document.getElementById('restoreBackupFile')?.addEventListener('change', importFullBackup);
+  document.getElementById('saveLimitsBtn')?.addEventListener('click', saveScreenTimeLimits);
+
   setInterval(() => { loadStatistics(); loadSocialStats(); }, 30000);
 });

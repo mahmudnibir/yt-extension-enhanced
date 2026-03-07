@@ -13,6 +13,13 @@
   let subtitlesApplied = false;
   let autoFullscreenApplied = false;
   
+  // Sleep timer — handle cleared when timer fires or is reset
+  let sleepTimerHandle = null;
+
+  // SponsorBlock — segments fetched per video
+  let sponsorSegments = [];
+  let sponsorBlockEnabled = false;
+
   // Time saved tracking
   let totalTimeSaved = 0;
   let lastUpdateTime = 0;
@@ -88,6 +95,9 @@
     setInterval(applySettings, 1000); // Adjust speed periodically
     setInterval(updateTimeSaved, 1000); // Track time saved
     setInterval(updateStatistics, 10000); // Update statistics every 10 seconds
+
+    // Fetch SponsorBlock segments for this video
+    fetchSponsorSegments(videoId);
 
     addRemainingTimeOverlay(); // Add the remaining time overlay
     addBookmarkButton(); // Add bookmark button to player controls
@@ -327,6 +337,27 @@
       shortcuts = { ...shortcuts, ...request.shortcuts };
       sendResponse({success: true});
     }
+    // Sleep timer: pause video after N minutes
+    if (request.action === 'setSleepTimer') {
+      clearTimeout(sleepTimerHandle);
+      sleepTimerHandle = null;
+      if (request.minutes > 0) {
+        sleepTimerHandle = setTimeout(() => {
+          const v = document.querySelector('video');
+          if (v) v.pause();
+          showBookmarkOverlay('Sleep timer: playback paused');
+        }, request.minutes * 60 * 1000);
+        showBookmarkOverlay(`Sleep timer set for ${request.minutes} min`);
+      } else {
+        showBookmarkOverlay('Sleep timer cleared');
+      }
+      sendResponse({success: true});
+    }
+    // Screen time limit hit: show soft-block overlay
+    if (request.action === 'timeLimitHit') {
+      showTimeLimitOverlay(request.domain || 'YouTube');
+      sendResponse({success: true});
+    }
     return true;
   });
 
@@ -366,9 +397,8 @@
         getBookmarkStorage((storage) => {
           storage.set({ [storageKey]: bookmarks }, () => {
             if (chrome.runtime.lastError) {
-              // Storage quota exceeded - show premium compliment
-              bookmarks.pop(); // Remove the bookmark we just added
-              alert('🎉 Wow! You\'re a power user! 🌟\n\nYou\'ve reached the cloud sync limit! Switch to Local Storage in Advanced settings for unlimited bookmarks.\n\nTip: Your existing bookmarks are safely stored!');
+              bookmarks.pop();
+              showBookmarkOverlay('Cloud sync limit reached. Switch to Local Storage in Advanced settings.');
             } else {
               addBookmarkMarker(time);
               currentIndex = bookmarks.findIndex(b => b.time === time);
@@ -397,24 +427,24 @@
 
     // Label bookmark shortcut
     if (matchesShortcut(e, shortcuts.labelBookmark)) {
-      const label = prompt("Enter bookmark label:");
-      if (!label) return;
       const time = Math.floor(video.currentTime);
       const existing = bookmarks.find(bm => bm.time === time);
-      if (existing) {
+      if (!existing) { showBookmarkOverlay('No bookmark at current time'); return; }
+      showInputOverlay('Enter bookmark label:', (label) => {
+        if (!label) return;
         const oldLabel = existing.label;
         existing.label = label;
         getBookmarkStorage((storage) => {
           storage.set({ [storageKey]: bookmarks }, () => {
             if (chrome.runtime.lastError) {
-              existing.label = oldLabel; // Revert
-              alert('🎉 Power User Alert! 🌟\n\nCloud sync capacity reached. Switch to Local Storage in Advanced settings for unlimited bookmarks!');
+              existing.label = oldLabel;
+              showBookmarkOverlay('Cloud sync limit reached. Switch to Local Storage.');
             } else {
               refreshMarkers();
             }
           });
         });
-      }
+      });
       return;
     }
 
@@ -439,7 +469,7 @@
 
     // Show help shortcut
     if (matchesShortcut(e, shortcuts.showHelp)) {
-      alert("Shortcuts:\nP - Add bookmark\nL - Label bookmark\nShift+PageUp/Down - Navigate\nShift+R - Remove\nShift+C - Clear all\nShift+/ - Show help");
+      showHelpPanel();
       return;
     }
 
@@ -767,10 +797,31 @@
     }
   }
 
+  /**
+   * Fetches sponsor segments from SponsorBlock API for a given video ID.
+   * Silently fails if offline or API unavailable — never blocks playback.
+   * @param {string} videoId
+   */
+  async function fetchSponsorSegments(videoId) {
+    sponsorSegments = [];
+    chrome.storage.sync.get(['sponsorBlock'], async ({ sponsorBlock }) => {
+      if (!sponsorBlock) return;
+      try {
+        const url = `https://sponsor.ajay.app/api/skipSegments?videoID=${encodeURIComponent(videoId)}&categories=["sponsor"]`;
+        const res = await fetch(url);
+        if (!res.ok) return;
+        const data = await res.json();
+        sponsorSegments = data.map(s => ({ start: s.segment[0], end: s.segment[1] }));
+      } catch (_) {
+        // Silently ignore — SponsorBlock is a best-effort feature
+      }
+    });
+  }
+
   function applySettings() {
     if (manualOverride) return; // Prevent auto-speed adjustment during manual override
 
-    chrome.storage.sync.get(["speed", "rememberSpeed", "voiceMode", "pitchCorrection", "skipAds", "autoTheater", "autoSubtitles", "focusMode"], ({ speed, rememberSpeed, voiceMode, pitchCorrection, skipAds, autoTheater, autoSubtitles, focusMode }) => {
+    chrome.storage.sync.get(["speed", "rememberSpeed", "voiceMode", "pitchCorrection", "skipAds", "sponsorBlock", "autoTheater", "autoSubtitles", "focusMode"], ({ speed, rememberSpeed, voiceMode, pitchCorrection, skipAds, sponsorBlock, autoTheater, autoSubtitles, focusMode }) => {
       const video = document.querySelector('video');
       if (!video || !speed) return;
 
@@ -788,6 +839,19 @@
           const adShowing = document.querySelector('.ad-showing');
           if (adShowing && !video.paused) {
             video.playbackRate = 16;
+          }
+        }
+      }
+
+      // ── SponsorBlock ──────────────────────────────────────────────────────
+      sponsorBlockEnabled = !!sponsorBlock;
+      if (sponsorBlock && sponsorSegments.length > 0) {
+        const t = video.currentTime;
+        for (const seg of sponsorSegments) {
+          if (t >= seg.start && t < seg.end - 0.5) {
+            video.currentTime = seg.end;
+            showBookmarkOverlay('⏭ Sponsor skipped');
+            break;
           }
         }
       }
@@ -949,6 +1013,122 @@
     setTimeout(() => {
       overlay.style.opacity = "0";
     }, 1200);
+  };
+
+  /**
+   * Shows a full-page soft block when the user's daily time limit is hit.
+   * The user can dismiss and keep watching, but receives a clear warning.
+   * @param {string} domain - e.g. 'YouTube'
+   */
+  function showTimeLimitOverlay(domain) {
+    const existing = document.getElementById('yt-time-limit-overlay');
+    if (existing) return;
+
+    const v = document.querySelector('video');
+    if (v) v.pause();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'yt-time-limit-overlay';
+    Object.assign(overlay.style, {
+      position: 'fixed', inset: '0',
+      background: 'rgba(0,0,0,0.88)',
+      display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'center',
+      zIndex: '2147483647',
+      fontFamily: 'Inter, sans-serif',
+      color: '#fff', textAlign: 'center',
+      backdropFilter: 'blur(4px)',
+    });
+
+    overlay.innerHTML = `
+      <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom:20px">
+        <circle cx="12" cy="12" r="10"></circle>
+        <polyline points="12 6 12 12 16 14"></polyline>
+      </svg>
+      <div style="font-size:22px;font-weight:700;margin-bottom:10px">Daily Limit Reached</div>
+      <div style="font-size:14px;color:rgba(255,255,255,0.55);max-width:300px;line-height:1.6;margin-bottom:28px">
+        You've hit your daily ${domain} screen time limit. Take a break!
+      </div>
+      <button id="yt-time-limit-override" style="background:#ff0000;border:none;color:#fff;border-radius:8px;padding:10px 24px;font-size:14px;cursor:pointer;font-family:inherit">
+        Keep Watching Anyway
+      </button>
+      <div style="font-size:11px;margin-top:12px;color:rgba(255,255,255,0.3)">Limit set in extension settings → Advanced</div>
+    `;
+
+    document.body.appendChild(overlay);
+    document.getElementById('yt-time-limit-override').onclick = () => {
+      overlay.remove();
+      const v2 = document.querySelector('video');
+      if (v2) v2.play();
+    };
+  }
+
+  /**
+   * Inline text input overlay — replaces browser prompt() in the content script.   * @param {string} labelText - Description shown above the input
+   * @param {function} callback - Called with the entered string or null on cancel
+   */
+  const showInputOverlay = (labelText, callback) => {
+    const existing = document.getElementById('yt-input-overlay');
+    if (existing) existing.remove();
+
+    const wrap = document.createElement('div');
+    wrap.id = 'yt-input-overlay';
+    Object.assign(wrap.style, {
+      position: 'fixed', top: '50%', left: '50%',
+      transform: 'translate(-50%, -50%)',
+      background: '#1a1a1a', color: '#fff',
+      border: '1px solid rgba(255,255,255,0.15)',
+      borderRadius: '12px', padding: '18px 20px',
+      zIndex: '99999', minWidth: '280px',
+      boxShadow: '0 8px 32px rgba(0,0,0,0.7)',
+      fontFamily: 'Inter, sans-serif',
+    });
+
+    const desc = document.createElement('div');
+    desc.textContent = labelText;
+    desc.style.cssText = 'font-size:13px; color:rgba(255,255,255,0.6); margin-bottom:10px;';
+
+    const input = document.createElement('input');
+    Object.assign(input.style, {
+      width: '100%', boxSizing: 'border-box',
+      background: 'rgba(255,255,255,0.08)',
+      border: '1px solid rgba(255,255,255,0.2)',
+      borderRadius: '8px', color: '#fff',
+      padding: '8px 12px', fontSize: '14px', outline: 'none',
+    });
+
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex; gap:8px; margin-top:12px; justify-content:flex-end;';
+
+    const cancelBtn = document.createElement('button');
+    cancelBtn.textContent = 'Cancel';
+    Object.assign(cancelBtn.style, {
+      background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)',
+      color: '#fff', borderRadius: '7px', padding: '6px 14px',
+      cursor: 'pointer', fontSize: '13px',
+    });
+
+    const okBtn = document.createElement('button');
+    okBtn.textContent = 'Save';
+    Object.assign(okBtn.style, {
+      background: '#ff0000', border: 'none', color: '#fff',
+      borderRadius: '7px', padding: '6px 14px',
+      cursor: 'pointer', fontSize: '13px',
+    });
+
+    const finish = (val) => { wrap.remove(); callback(val); };
+    cancelBtn.onclick = () => finish(null);
+    okBtn.onclick     = () => finish(input.value.trim() || null);
+    input.onkeydown   = (e) => {
+      e.stopPropagation();
+      if (e.key === 'Enter')  finish(input.value.trim() || null);
+      if (e.key === 'Escape') finish(null);
+    };
+
+    row.append(cancelBtn, okBtn);
+    wrap.append(desc, input, row);
+    document.body.appendChild(wrap);
+    input.focus();
   };
 
   // Show overlay with speed change confirmation
@@ -1380,7 +1560,7 @@
         storage.set({ [storageKey]: bookmarks }, () => {
           if (chrome.runtime.lastError) {
             bookmarks.pop();
-            alert('🎉 Wow! You\'re a power user! 🌟\n\nCloud sync limit reached! Switch to Local Storage in Advanced settings for unlimited bookmarks.');
+            showBookmarkOverlay('Cloud sync limit reached. Switch to Local Storage in Advanced settings.');
           } else {
             addBookmarkMarker(time);
             currentIndex = bookmarks.findIndex(b => b.time === time);
@@ -1505,7 +1685,7 @@
             if (chrome.runtime.lastError) {
               bm.label = oldLabel;
               labelInput.value = oldLabel;
-              alert('🎉 Power User Alert! 🌟\n\nCloud sync capacity reached. Switch to Local Storage in Advanced settings for unlimited bookmarks!');
+              showBookmarkOverlay('Cloud sync limit reached. Switch to Local Storage in Advanced settings.');
             } else {
               refreshMarkers();
             }
@@ -1635,7 +1815,7 @@
         if (chrome.runtime.lastError) {
           bookmarks.splice(lastDeleted.index, 1);
           deletedBookmarks.push(lastDeleted);
-          alert('🎉 Power User! 🌟\n\nCloud sync capacity reached. Switch to Local Storage in Advanced settings for unlimited space.');
+          showBookmarkOverlay('Cloud sync limit reached. Switch to Local Storage in Advanced settings.');
         } else {
           refreshMarkers();
           refreshBookmarkList();
@@ -1702,7 +1882,7 @@
   // Export bookmarks
   function exportBookmarks() {
     if (bookmarks.length === 0) {
-      alert('No bookmarks to export!');
+      showBookmarkOverlay('No bookmarks to export');
       return;
     }
 
@@ -1744,7 +1924,7 @@
           const importData = JSON.parse(event.target.result);
           
           if (!importData.bookmarks || !Array.isArray(importData.bookmarks)) {
-            alert('Invalid bookmark file format!');
+            showBookmarkOverlay('Invalid bookmark file format');
             return;
           }
 
@@ -1759,17 +1939,17 @@
           getBookmarkStorage((storage) => {
             storage.set({ [storageKey]: bookmarks }, () => {
               if (chrome.runtime.lastError) {
-                bookmarks = bookmarks.slice(0, -importData.bookmarks.length); // Revert
-                alert('🎉 Amazing! You\'re a super user! 🌟\n\nCloud sync limit reached! Switch to Local Storage in Advanced settings for unlimited bookmarks, then re-import.');
+                bookmarks = bookmarks.slice(0, -importData.bookmarks.length);
+                showBookmarkOverlay('Cloud sync limit reached. Switch to Local Storage in Advanced settings.');
               } else {
                 refreshMarkers();
                 refreshBookmarkList();
-                alert(`Imported ${importData.bookmarks.length} bookmarks!`);
+                showBookmarkOverlay(`Imported ${importData.bookmarks.length} bookmarks`);
               }
             });
           });
         } catch (error) {
-          alert('Error reading bookmark file!');
+          showBookmarkOverlay('Error reading bookmark file');
           console.error(error);
         }
       };
