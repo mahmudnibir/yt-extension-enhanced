@@ -149,8 +149,22 @@
     .cta p { font-size: 15px; color: var(--muted); margin-bottom: 32px; position: relative; }
     .cta-btns { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; position: relative; }
 
-    /* FOOTER */
-    footer { border-top: 1px solid var(--border); padding: 28px 40px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; font-size: 12px; color: var(--muted); position: relative; z-index: 1; }
+    /* Copy-to-clipboard url button (chrome://extensions) */
+    .copy-chrome-url {
+      display: inline-flex; align-items: center; gap: 5px;
+      background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.13);
+      border-radius: 4px; padding: 1px 7px 1px 5px; cursor: pointer;
+      font-family: inherit; transition: background .15s, border-color .15s;
+      vertical-align: middle;
+    }
+    .copy-chrome-url:hover { background: rgba(255,255,255,0.13); border-color: rgba(255,255,255,0.28); }
+    .copy-chrome-url code { background: none; padding: 0; font-size: 11px; }
+    .copy-chrome-url .copy-icon { opacity: 0.45; display: flex; align-items: center; }
+    .copy-chrome-url:hover .copy-icon { opacity: 0.85; }
+    .copy-chrome-url.copied { border-color: #2ecc71; background: rgba(46,204,113,0.1); }
+    .copy-chrome-url.copied code { color: #2ecc71; }
+    html[data-theme="light"] .copy-chrome-url { background: rgba(0,0,0,0.05); border-color: rgba(0,0,0,0.13); }
+    html[data-theme="light"] .copy-chrome-url:hover { background: rgba(0,0,0,0.1); } border-top: 1px solid var(--border); padding: 28px 40px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; font-size: 12px; color: var(--muted); position: relative; z-index: 1; }
     .fl { display: flex; align-items: center; gap: 20px; }
     .fl a { display: flex; align-items: center; gap: 6px; color: var(--muted); transition: color .15s; }
     .fl a:hover { color: var(--text); }
@@ -408,7 +422,7 @@
   <p class="sc">Side-load directly from GitHub &mdash; no Chrome Web Store review wait required.</p>
   <div class="igrid">
     <div class="istep"><div class="isn">Step 01</div><h3>Clone the repo</h3><p><code>git clone https://github.com/mahmudnibir/yt-extension-enhanced</code></p></div>
-    <div class="istep"><div class="isn">Step 02</div><h3>Open Extensions</h3><p>Go to <code>chrome://extensions</code> and enable <strong>Developer mode</strong> via the top-right toggle.</p></div>
+    <div class="istep"><div class="isn">Step 02</div><h3>Open Extensions</h3><p>Go to <button class="copy-chrome-url" data-url="chrome://extensions" title="Copy chrome://extensions to clipboard"><code>chrome://extensions</code><span class="copy-icon"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></span></button> and enable <strong>Developer mode</strong> via the top-right toggle.</p></div>
     <div class="istep"><div class="isn">Step 03</div><h3>Load Unpacked</h3><p>Click <strong>Load unpacked</strong> and select the cloned project folder.</p></div>
     <div class="istep"><div class="isn">Step 04</div><h3>Pin &amp; use</h3><p>Pin the icon to your Chrome toolbar. Open YouTube and click the icon to start.</p></div>
   </div>
@@ -456,6 +470,20 @@
     const saved = localStorage.getItem('theme');
     if (saved === 'light') document.documentElement.setAttribute('data-theme', 'light');
   })();
+
+  // Copy chrome:// URL buttons — copies URL to clipboard and shows brief confirmation
+  document.querySelectorAll('.copy-chrome-url').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const url = btn.dataset.url;
+      navigator.clipboard.writeText(url).then(() => {
+        btn.classList.add('copied');
+        const code = btn.querySelector('code');
+        const original = code.textContent;
+        code.textContent = 'Copied!';
+        setTimeout(() => { btn.classList.remove('copied'); code.textContent = original; }, 1800);
+      });
+    });
+  });
 
   // Toggle between dark (default) and light theme, persisting the choice.
   document.getElementById('themeToggle').addEventListener('click', () => {
