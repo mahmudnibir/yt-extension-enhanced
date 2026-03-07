@@ -122,4 +122,15 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       chrome.storage.local.set({ [key]: stats });
     });
   }
+  if (request.type === 'downloadVideo') {
+    const { url, filename } = request;
+    chrome.downloads.download({ url, filename, saveAs: false }, (id) => {
+      if (chrome.runtime.lastError) {
+        sendResponse({ success: false, error: chrome.runtime.lastError.message });
+      } else {
+        sendResponse({ success: true, downloadId: id });
+      }
+    });
+    return true; // keep message channel open for async response
+  }
 });
