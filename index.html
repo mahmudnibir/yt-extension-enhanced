@@ -14,20 +14,20 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
       --bg: #080808; --bg2: #0f0f0f;
-      --card: rgba(255,255,255,0.04); --card-h: rgba(255,255,255,0.07);
-      --border: rgba(255,255,255,0.07); --border-h: rgba(255,255,255,0.14);
-      --text: #efefef; --muted: rgba(255,255,255,0.42);
-      --red: #c0392b; --red-glow: rgba(192,57,43,0.18);
+      --card: rgba(255,255,255,0.055); --card-h: rgba(255,255,255,0.09);
+      --border: rgba(255,255,255,0.10); --border-h: rgba(255,255,255,0.22);
+      --text: #f2f2f2; --muted: rgba(255,255,255,0.52);
+      --red: #e04030; --red-glow: rgba(220,64,48,0.30);
     }
     html { scroll-behavior: smooth; }
-    body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", Helvetica, sans-serif; line-height: 1.6; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+    body { background: var(--bg); background-image: radial-gradient(ellipse 90% 55% at 50% 0%, rgba(220,64,48,0.07) 0%, transparent 65%), radial-gradient(ellipse 60% 40% at 80% 100%, rgba(220,64,48,0.04) 0%, transparent 60%); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", Helvetica, sans-serif; line-height: 1.6; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
     a { color: inherit; text-decoration: none; }
     button { cursor: pointer; font-family: inherit; }
 
     /* NAV */
-    nav { position: fixed; top: 0; left: 0; right: 0; z-index: 200; display: flex; align-items: center; justify-content: space-between; padding: 0 40px; height: 58px; background: rgba(8,8,8,0.82); backdrop-filter: blur(20px); border-bottom: 1px solid var(--border); }
+    nav { position: fixed; top: 0; left: 0; right: 0; z-index: 200; display: flex; align-items: center; justify-content: space-between; padding: 0 40px; height: 58px; background: rgba(8,8,8,0.88); backdrop-filter: blur(24px); border-bottom: 1px solid rgba(255,255,255,0.08); }
     .nav-logo { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 14px; letter-spacing: -0.01em; }
-    .nav-logo-mark { width: 26px; height: 26px; border-radius: 7px; background: var(--red); display: flex; align-items: center; justify-content: center; box-shadow: 0 0 16px var(--red-glow); }
+    .nav-logo-mark { width: 26px; height: 26px; border-radius: 7px; background: var(--red); display: flex; align-items: center; justify-content: center; box-shadow: 0 0 22px var(--red-glow), 0 0 6px rgba(220,64,48,0.5); }
     .nav-center { display: flex; align-items: center; gap: 30px; font-size: 13px; color: var(--muted); }
     .nav-center a:hover { color: var(--text); transition: color .15s; }
     .nav-right { display: flex; align-items: center; gap: 10px; }
@@ -39,8 +39,8 @@
 
     /* HERO */
     .hero { position: relative; z-index: 1; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 120px 24px 80px; overflow: hidden; }
-    .hero-glow { position: absolute; top: 35%; left: 50%; transform: translate(-50%,-50%); width: 700px; height: 400px; background: radial-gradient(ellipse, rgba(192,57,43,0.09) 0%, transparent 70%); pointer-events: none; }
-    .hero-eyebrow { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--border-h); border-radius: 100px; padding: 5px 14px; font-size: 11px; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); margin-bottom: 30px; }
+    .hero-glow { position: absolute; top: 35%; left: 50%; transform: translate(-50%,-50%); width: 860px; height: 500px; background: radial-gradient(ellipse, rgba(220,64,48,0.18) 0%, rgba(220,64,48,0.06) 40%, transparent 70%); pointer-events: none; }
+    .hero-eyebrow { display: inline-flex; align-items: center; gap: 8px; border: 1px solid rgba(220,64,48,0.35); border-radius: 100px; padding: 5px 14px; font-size: 11px; letter-spacing: 0.07em; text-transform: uppercase; color: rgba(255,255,255,0.65); margin-bottom: 30px; background: rgba(220,64,48,0.06); }
     .dot { width: 6px; height: 6px; border-radius: 50%; background: #2ecc71; box-shadow: 0 0 8px rgba(46,204,113,0.7); animation: blink 2s ease-in-out infinite; display: inline-block; }
     @keyframes blink { 0%,100% { opacity:1; } 50% { opacity:0.35; } }
     h1 { font-size: clamp(38px,8vw,80px); font-weight: 800; letter-spacing: -0.04em; line-height: 1.04; max-width: 860px; margin-bottom: 24px; position: relative; z-index: 1; }
@@ -77,7 +77,7 @@
 
     /* SECTION */
     .section { max-width: 1060px; margin: 0 auto; padding: 90px 24px; position: relative; z-index: 1; }
-    .kicker { font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 12px; }
+    .kicker { font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--red); margin-bottom: 12px; font-weight: 600; }
     .sh { font-size: clamp(28px,4vw,46px); font-weight: 800; letter-spacing: -0.03em; line-height: 1.08; margin-bottom: 16px; }
     .sh .dim { color: rgba(255,255,255,0.22); }
     .sc { font-size: 15px; color: var(--muted); max-width: 500px; margin-bottom: 52px; line-height: 1.7; }
@@ -94,13 +94,13 @@
     .bento { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; }
     @media (max-width: 860px) { .bento { grid-template-columns: 1fr 1fr; } }
     @media (max-width: 560px) { .bento { grid-template-columns: 1fr; } }
-    .bc { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 26px; transition: background .18s, border-color .18s, transform .15s; overflow: hidden; }
-    .bc:hover { background: var(--card-h); border-color: var(--border-h); transform: translateY(-2px); }
+    .bc { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 26px; transition: background .18s, border-color .2s, transform .15s, box-shadow .2s; overflow: hidden; }
+    .bc:hover { background: var(--card-h); border-color: var(--border-h); transform: translateY(-3px); box-shadow: 0 12px 36px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.1); }
     .bc.wide { grid-column: span 2; }
     @media (max-width: 860px) { .bc.wide { grid-column: span 1; } }
-    .bc.featured { background: linear-gradient(135deg,rgba(192,57,43,0.11) 0%,var(--card) 60%); border-color: rgba(192,57,43,0.22); }
-    .bc.featured:hover { border-color: rgba(192,57,43,0.4); }
-    .bci { width: 40px; height: 40px; border-radius: 11px; background: rgba(255,255,255,0.06); display: flex; align-items: center; justify-content: center; margin-bottom: 18px; }
+    .bc.featured { background: linear-gradient(135deg,rgba(220,64,48,0.16) 0%,rgba(220,64,48,0.04) 50%, var(--card) 100%); border-color: rgba(220,64,48,0.30); }
+    .bc.featured:hover { border-color: rgba(220,64,48,0.55); box-shadow: 0 12px 36px rgba(0,0,0,0.5), 0 0 24px rgba(220,64,48,0.12); }
+    .bci { width: 40px; height: 40px; border-radius: 11px; background: rgba(255,255,255,0.09); border: 1px solid rgba(255,255,255,0.10); display: flex; align-items: center; justify-content: center; margin-bottom: 18px; }
     .bc h3 { font-size: 15px; font-weight: 700; margin-bottom: 8px; }
     .bc p { font-size: 13px; color: var(--muted); line-height: 1.6; }
 
@@ -126,9 +126,9 @@
     @media (max-width: 860px) { .vgrid { grid-template-columns: repeat(4,1fr); } }
     @media (max-width: 700px) { .vgrid { grid-template-columns: repeat(3,1fr); } }
     @media (max-width: 420px) { .vgrid { grid-template-columns: repeat(2,1fr); } }
-    .vm { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:20px 14px; text-align:center; transition:all .18s; }
-    .vm:hover { background:var(--card-h); border-color:var(--border-h); transform:translateY(-2px); }
-    .vmb { width:38px; height:38px; border-radius:10px; background:rgba(255,255,255,0.06); display:flex; align-items:center; justify-content:center; margin:0 auto 12px; }
+    .vm { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:20px 14px; text-align:center; transition:all .2s; }
+    .vm:hover { background:var(--card-h); border-color:var(--border-h); transform:translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.45); }
+    .vmb { width:38px; height:38px; border-radius:10px; background:rgba(255,255,255,0.09); border:1px solid rgba(255,255,255,0.10); display:flex; align-items:center; justify-content:center; margin:0 auto 12px; }
     .vm h4 { font-size:13px; font-weight:700; margin-bottom:5px; }
     .vm p { font-size:11px; color:var(--muted); line-height:1.5; }
 
@@ -136,15 +136,16 @@
     .igrid { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; }
     @media (max-width: 760px) { .igrid { grid-template-columns: 1fr 1fr; } }
     @media (max-width: 440px) { .igrid { grid-template-columns: 1fr; } }
-    .istep { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:22px; }
-    .isn { font-size:11px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:var(--muted); margin-bottom:12px; }
+    .istep { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:22px; transition: border-color .18s, background .18s; }
+    .istep:hover { border-color: var(--border-h); background: var(--card-h); }
+    .isn { font-size:11px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color: var(--red); margin-bottom:12px; }
     .istep h3 { font-size:14px; font-weight:700; margin-bottom:6px; }
     .istep p { font-size:12px; color:var(--muted); line-height:1.6; }
     .istep code { font-family:"SF Mono","Fira Code",monospace; font-size:11px; background:rgba(255,255,255,0.07); border-radius:4px; padding:1px 5px; }
 
     /* CTA */
-    .cta { margin: 0 24px 90px; max-width: 1060px; margin-left: auto; margin-right: auto; background: linear-gradient(135deg,rgba(192,57,43,0.10) 0%,rgba(255,255,255,0.02) 100%); border: 1px solid rgba(192,57,43,0.18); border-radius: 20px; padding: 56px 40px; text-align: center; position: relative; z-index: 1; overflow: hidden; }
-    .cta::before { content:""; position:absolute; top:-60px; left:50%; transform:translateX(-50%); width:500px; height:200px; background:radial-gradient(ellipse,rgba(192,57,43,0.16) 0%,transparent 70%); pointer-events:none; }
+    .cta { margin: 0 24px 90px; max-width: 1060px; margin-left: auto; margin-right: auto; background: linear-gradient(135deg,rgba(220,64,48,0.13) 0%,rgba(255,255,255,0.025) 100%); border: 1px solid rgba(220,64,48,0.28); border-radius: 20px; padding: 56px 40px; text-align: center; position: relative; z-index: 1; overflow: hidden; }
+    .cta::before { content:""; position:absolute; top:-60px; left:50%; transform:translateX(-50%); width:600px; height:260px; background:radial-gradient(ellipse,rgba(220,64,48,0.22) 0%,transparent 70%); pointer-events:none; }
     .cta h2 { font-size: clamp(24px,4vw,40px); font-weight: 800; letter-spacing: -0.03em; margin-bottom: 14px; position: relative; }
     .cta p { font-size: 15px; color: var(--muted); margin-bottom: 32px; position: relative; }
     .cta-btns { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; position: relative; }
@@ -163,8 +164,14 @@
     .copy-chrome-url:hover .copy-icon { opacity: 0.85; }
     .copy-chrome-url.copied { border-color: #2ecc71; background: rgba(46,204,113,0.1); }
     .copy-chrome-url.copied code { color: #2ecc71; }
+    /* Inline code-only copy button: no icon, just cursor hint */
+    .copy-code-only { padding: 1px 5px; display: inline; white-space: normal; text-align: left; }
+    .copy-code-only code { font-size: 11px; word-break: break-all; }
     html[data-theme="light"] .copy-chrome-url { background: rgba(0,0,0,0.05); border-color: rgba(0,0,0,0.13); }
-    html[data-theme="light"] .copy-chrome-url:hover { background: rgba(0,0,0,0.1); } border-top: 1px solid var(--border); padding: 28px 40px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; font-size: 12px; color: var(--muted); position: relative; z-index: 1; }
+    html[data-theme="light"] .copy-chrome-url:hover { background: rgba(0,0,0,0.1); }
+
+    /* FOOTER */
+    footer { border-top: 1px solid var(--border); padding: 28px 40px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; font-size: 12px; color: var(--muted); position: relative; z-index: 1; }
     .fl { display: flex; align-items: center; gap: 20px; }
     .fl a { display: flex; align-items: center; gap: 6px; color: var(--muted); transition: color .15s; }
     .fl a:hover { color: var(--text); }
@@ -210,6 +217,8 @@
     html[data-theme="light"] .ods-play svg { filter: invert(1) brightness(0.1); }
     html[data-theme="light"] .istep code { background: rgba(0,0,0,0.06); }
     html[data-theme="light"] .cta { background: linear-gradient(135deg,rgba(192,57,43,0.07) 0%,rgba(0,0,0,0.015) 100%); }
+    html[data-theme="light"] .kicker { color: #c0392b; }
+    html[data-theme="light"] .isn { color: #c0392b; }
   </style>
 </head>
 <body>
@@ -421,7 +430,7 @@
   <h2 class="sh">Running in<br /><span class="dim">four steps.</span></h2>
   <p class="sc">Side-load directly from GitHub &mdash; no Chrome Web Store review wait required.</p>
   <div class="igrid">
-    <div class="istep"><div class="isn">Step 01</div><h3>Clone the repo</h3><p><code>git clone https://github.com/mahmudnibir/yt-extension-enhanced</code></p></div>
+    <div class="istep"><div class="isn">Step 01</div><h3>Clone the repo</h3><p><button class="copy-chrome-url copy-code-only" data-url="git clone https://github.com/mahmudnibir/yt-extension-enhanced" title="Click to copy"><code>git clone https://github.com/mahmudnibir/yt-extension-enhanced</code></button></p></div>
     <div class="istep"><div class="isn">Step 02</div><h3>Open Extensions</h3><p>Go to <button class="copy-chrome-url" data-url="chrome://extensions" title="Copy chrome://extensions to clipboard"><code>chrome://extensions</code><span class="copy-icon"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></span></button> and enable <strong>Developer mode</strong> via the top-right toggle.</p></div>
     <div class="istep"><div class="isn">Step 03</div><h3>Load Unpacked</h3><p>Click <strong>Load unpacked</strong> and select the cloned project folder.</p></div>
     <div class="istep"><div class="isn">Step 04</div><h3>Pin &amp; use</h3><p>Pin the icon to your Chrome toolbar. Open YouTube and click the icon to start.</p></div>
