@@ -17,6 +17,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Modal close button colour changed from accent red to a neutral white-outline style to avoid false "danger" affordance
 - Backup-export buttons layout fixed: `flex: 1; min-width: 0` on inner wrapper prevents overflow at narrow widths
 - Number inputs no longer show browser spinner arrows (removed via `-webkit-appearance: none`)
+- `index.html` landing page updated: bento cards now reflect SponsorBlock, Sleep Timer, Screen Time Limits, Social Download (Instagram/Facebook), and cross-platform Watch Statistics; core feature count bumped to 12+
+- README feature table updated with all previously undocumented features
 - Upgraded version to `3.8.0` across `manifest.json`, `popup.html`, `index.html`, and `README.md`
 
 ---

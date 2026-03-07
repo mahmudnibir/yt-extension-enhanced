@@ -17,13 +17,17 @@
 | Universal Video Speed | Hover overlay on **any** video across the entire web — toggle in settings |
 | Bookmarks | Cloud-synced video timestamps with labels, import & export as JSON |
 | Ad Skip | Automatically skips YouTube advertisements |
+| SponsorBlock | Auto-skip sponsor segments via community data |
 | Content Filters | Hide comments, shorts, description, or suggested videos |
 | Focus Mode | Hides the sidebar navigation while watching to reduce distractions |
 | Auto Theater Mode | Automatically switches to theater view on video load |
 | Auto Fullscreen | Automatically enters fullscreen when playback starts |
 | Default Volume | Enforce a set volume level on every video load |
 | Auto Subtitles | Automatically enable closed captions on video load |
-| Watch Statistics | Track total watch time and session history with a reset option |
+| Sleep Timer | Pause playback after a set number of minutes |
+| Screen Time Limits | Daily watch-time cap with a warning and auto-pause |
+| Watch Statistics | Track total watch time and session history with a reset option across YouTube, Instagram, and Facebook |
+| Social Download | One-click video download overlay on Instagram and Facebook posts |
 | Keyboard Shortcuts | Fully customizable hotkeys for all controls |
 | Voice Modes | 8 real-time audio modes: Normal, Chipmunk, Pikachu, Naruto, Doraemon, Bass Boost, Robot, Echo |
 | Feature Guide | In-popup `?` button opens a scrollable guide listing all setting descriptions grouped by section |
