@@ -2,7 +2,7 @@
 
 > Advanced YouTube browser extension for power users.
 
-**Version** 3.8.0 &nbsp;·&nbsp; **Manifest** V3 &nbsp;·&nbsp; **Author** [Mahmud Nibir](https://github.com/mahmudnibir)
+**Version** 3.9.0 &nbsp;·&nbsp; **Manifest** V3 &nbsp;·&nbsp; **Author** [Mahmud Nibir](https://github.com/mahmudnibir)
 
 ![Views](https://visitor-badge.laobi.icu/badge?page_id=mahmudnibir.yt-extension-enhanced)
 
@@ -26,8 +26,9 @@
 | Auto Subtitles | Automatically enable closed captions on video load |
 | Sleep Timer | Pause playback after a set number of minutes |
 | Screen Time Limits | Daily watch-time cap with a warning and auto-pause |
-| Watch Statistics | Track total watch time and session history with a reset option across YouTube, Instagram, and Facebook |
+| Watch Statistics | Track total watch time and session history with a live graph (Y-axis labels, daily/weekly breakdown) across YouTube, Instagram, and Facebook; last-selected platform tab is remembered |
 | Social Download | One-click video download overlay on Instagram and Facebook posts |
+| Hide Messenger | Remove the Facebook Messenger chat bubble and chat panel with a single toggle; updates the page instantly without a reload |
 | Keyboard Shortcuts | Fully customizable hotkeys for all controls |
 | Voice Modes | 8 real-time audio modes: Normal, Chipmunk, Pikachu, Naruto, Doraemon, Bass Boost, Robot, Echo |
 | Feature Guide | In-popup `?` button opens a scrollable guide listing all setting descriptions grouped by section |
