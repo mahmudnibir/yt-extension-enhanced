@@ -348,12 +348,17 @@
     .setting-title {
       color: rgba(255, 255, 255, 0.95);
       font-size: 12px;
-      font-weight: 500;
+      font-weight: 400;
       margin-bottom: 2px;
     }
     
     /* setting-desc is now hidden — used as data source for the help modal */
-    .setting-desc { display: none !important; }
+    .setting-desc {
+      font-size: 10px;
+      color: var(--text-tertiary, rgba(255,255,255,0.38));
+      margin-top: 2px;
+      line-height: 1.4;
+    }
 
     /* Remove number input spinners */
     input[type="number"]::-webkit-outer-spin-button,
@@ -1662,6 +1667,29 @@
           <div>
             <input id="focusMode" type="checkbox" class="toggle-input">
             <label for="focusMode" class="toggle-label">
+              <div class="toggle-thumb"></div>
+            </label>
+          </div>
+        </div>
+
+        <!-- Hide FB Messenger -->
+        <div class="setting-item setting-item-full">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <div class="setting-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                <line x1="9" y1="10" x2="15" y2="10"></line>
+                <line x1="9" y1="14" x2="13" y2="14"></line>
+              </svg>
+            </div>
+            <div class="setting-content">
+              <div class="setting-title">Hide Messenger</div>
+              <div class="setting-desc">Remove the Messenger chat bubble and panel from Facebook</div>
+            </div>
+          </div>
+          <div>
+            <input id="hideFbMessenger" type="checkbox" class="toggle-input">
+            <label for="hideFbMessenger" class="toggle-label">
               <div class="toggle-thumb"></div>
             </label>
           </div>

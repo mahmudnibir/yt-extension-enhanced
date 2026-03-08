@@ -24,6 +24,83 @@
 
   if (!isIG && !isFB) return;
 
+  // ── Hide Messenger (Facebook only) ───────────────────────────────────────
+  // Injects/removes a <style> based on the `hideFbMessenger` setting.
+  // A MutationObserver re-applies the style after SPA navigations.
+  // A storage.onChanged listener toggles it instantly when the popup toggle
+  // is flipped — no page refresh required.
+  if (isFB) {
+    const STYLE_ID = 'yt-ext-hide-messenger';
+    const MESSENGER_CSS = `
+      /* Navbar Messenger / Chats icon */
+      [aria-label="Messenger"],
+      [aria-label="Chats"],
+      a[href*="messenger.com"],
+      a[href="/messages"],
+      a[href^="/messages/"],
+      [data-pagelet="MercuryJewelSection"],
+      /* Floating chat heads / bubble */
+      [data-pagelet="ChatTabsNewRegion"],
+      [data-testid="mwthreadlist-thread-anchor"],
+      /* Desktop right-rail chat sidebar */
+      [data-pagelet="ChatSidebar"],
+      /* Bottom chat tab bar */
+      #ChatTabBar,
+      [data-pagelet*="Jenga"] { display: none !important; }
+    `;
+
+    // Inject the style tag if not already present.
+    function injectMessengerStyle() {
+      if (document.getElementById(STYLE_ID)) return;
+      const style = document.createElement('style');
+      style.id = STYLE_ID;
+      style.textContent = MESSENGER_CSS;
+      (document.head || document.documentElement).appendChild(style);
+    }
+
+    // Remove the style tag to restore Messenger elements.
+    function removeMessengerStyle() {
+      const el = document.getElementById(STYLE_ID);
+      if (el) el.remove();
+    }
+
+    // Keeps a reference to the MutationObserver so we can disconnect it
+    // when the user disables the setting without a refresh.
+    let spaObserver = null;
+
+    function enableHideMessenger() {
+      injectMessengerStyle();
+      if (!spaObserver) {
+        // Re-inject after every FB SPA navigation that rebuilds the navbar.
+        spaObserver = new MutationObserver(injectMessengerStyle);
+        spaObserver.observe(document.documentElement, { childList: true, subtree: true });
+      }
+    }
+
+    function disableHideMessenger() {
+      removeMessengerStyle();
+      if (spaObserver) {
+        spaObserver.disconnect();
+        spaObserver = null;
+      }
+    }
+
+    // Apply on page load based on stored setting.
+    chrome.storage.sync.get(['hideFbMessenger'], (data) => {
+      if (data.hideFbMessenger) enableHideMessenger();
+    });
+
+    // React instantly when the popup toggle is changed.
+    chrome.storage.onChanged.addListener((changes, area) => {
+      if (area !== 'sync' || !('hideFbMessenger' in changes)) return;
+      if (changes.hideFbMessenger.newValue) {
+        enableHideMessenger();
+      } else {
+        disableHideMessenger();
+      }
+    });
+  }
+
   const ITEM_ID    = 'yt-ext-dl-item';
   const TOAST_ID   = 'yt-ext-dl-toast';
   const LABEL      = isIG ? 'Download Reel' : 'Download Video';
@@ -533,24 +610,35 @@
 
   // ── Reel / video play tracking ────────────────────────────────────────────
   /**
-   * Tracks each distinct reel/video the user watches and increments the
-   * daily `videosWatched` counter in storage via background.js.
-   *
-   * Debounce rules (per <video> element):
-   *  - A "new play" is only counted when the element has not been counted
-   *    within the last 30 seconds — this prevents loops from inflating the
-   *    count while still crediting re-watching the same clip after a decent gap.
-   *  - Short gifs / avatars (duration ≤ 3 s and looping) are skipped entirely.
+   * Counts a video as watched once the user has watched ≥ 3 seconds of it.
+   * Uses `timeupdate` (not `play`) so we only count genuine viewing intent.
+   * Deduplication is URL-path based — see comment block below.
    */
   const domain = isIG ? 'ig' : 'fb';
 
-  // WeakMap<HTMLVideoElement, number> — timestamp (ms) of the last counted play
-  const lastCountedAt = new WeakMap();
-  const PLAY_COOLDOWN_MS = 30_000; // 30 seconds
+  // ── URL-path deduplication ───────────────────────────────────────────────
+  // Facebook keeps two <video> elements per post (a hidden preloader + the
+  // visible player). Both independently reach currentTime ≥ 3 s, sometimes
+  // seconds apart, making a time-window global guard unreliable.
+  //
+  // The only guarantee: both elements load the *exact same CDN URL* for the
+  // same post. So we deduplicate by URL pathname (stripped of query params /
+  // CDN tokens that may differ per request). Once a path is counted, no other
+  // element playing that same path can count it again.
+  //
+  // Why pathname only? FB CDN URLs look like:
+  //   https://video.xx.fbcdn.net/v/t42.1790-2/<id>/<filename>.mp4?...
+  // The path segment uniquely identifies the video; query params are tokens.
+  const countedPaths = new Set();
+
+  /** Returns the URL pathname, used as a stable video identity key. */
+  function videoUrlKey(url) {
+    try { return new URL(url).pathname; } catch { return url; }
+  }
 
   /**
-   * Attaches a `play` listener to a <video> element if not already attached.
-   * Uses a flag property to prevent double-attachment on the same node.
+   * Attaches a `timeupdate` listener to a <video> element if not already
+   * attached. Counts the video once the user has watched ≥ 3 s of it.
    *
    * @param {HTMLVideoElement} videoEl
    */
@@ -558,17 +646,33 @@
     if (videoEl._ytExtTracked) return;
     videoEl._ytExtTracked = true;
 
-    videoEl.addEventListener('play', () => {
+    // Last src this element has already been counted or suppressed for.
+    let handledSrc = null;
+
+    videoEl.addEventListener('timeupdate', () => {
       // Skip very short looping ambient clips (avatars, story rings, etc.)
       if (videoEl.loop && videoEl.duration > 0 && videoEl.duration <= 3) return;
 
-      const now = Date.now();
-      const last = lastCountedAt.get(videoEl) || 0;
-      if (now - last < PLAY_COOLDOWN_MS) return; // same reel looping — skip
+      // Require at least 3 seconds of actual playback.
+      if (videoEl.currentTime < 3) return;
 
-      lastCountedAt.set(videoEl, now);
+      const src = videoEl.currentSrc || videoEl.src || '';
+      // Already handled this src on this element — skip every subsequent tick.
+      if (src && src === handledSrc) return;
+
+      // Mark as handled immediately so further timeupdate ticks are cheap.
+      handledSrc = src;
+
+      if (!src) return;
+      const key = videoUrlKey(src);
+
+      // URL-path dedup: if any element already counted this video URL, skip.
+      // This is the definitive guard against FB's dual-element architecture.
+      if (countedPaths.has(key)) return;
+
+      countedPaths.add(key);
       sendMsg({ type: 'socialVideoPlay', domain }, () => {});
-    });
+    }, { passive: true });
   }
 
   // Attach to all videos already in the DOM at injection time

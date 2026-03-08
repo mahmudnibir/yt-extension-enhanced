@@ -251,7 +251,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const n = values.length;
       if (n < 2) return;
 
-      const pad    = { top: 12, right: 10, bottom: 26, left: 10 };
+      const pad    = { top: 12, right: 10, bottom: 26, left: 34 };
       const gW     = cssW - pad.left - pad.right;
       const gH     = cssH - pad.top  - pad.bottom;
       const maxVal = Math.max(1, ...values);
@@ -297,6 +297,29 @@ document.addEventListener('DOMContentLoaded', () => {
       ctx.lineTo(pad.left + gW, pad.top + gH + 1);
       ctx.stroke();
 
+      // Y-axis labels + faint horizontal gridlines (top, mid, 0)
+      const labelColor = getComputedStyle(document.documentElement)
+        .getPropertyValue('--text-secondary').trim() || 'rgba(255,255,255,0.45)';
+      const yTicks = [
+        { val: maxVal,                    y: pad.top },
+        { val: Math.round(maxVal / 2),    y: pad.top + gH / 2 },
+        { val: 0,                         y: pad.top + gH },
+      ];
+      ctx.font      = '9px Inter, -apple-system, sans-serif';
+      ctx.fillStyle = labelColor;
+      ctx.textAlign = 'right';
+      yTicks.forEach(({ val, y }) => {
+        // Gridline
+        ctx.beginPath();
+        ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+        ctx.lineWidth   = 1;
+        ctx.moveTo(pad.left, y);
+        ctx.lineTo(pad.left + gW, y);
+        ctx.stroke();
+        // Label
+        ctx.fillText(String(val), pad.left - 4, y + 3.5);
+      });
+
       // Last-point accent dot
       const last = pts[n - 1];
       ctx.beginPath();
@@ -309,8 +332,6 @@ document.addEventListener('DOMContentLoaded', () => {
       ctx.fill();
 
       // X-axis labels
-      const labelColor = getComputedStyle(document.documentElement)
-        .getPropertyValue('--text-secondary').trim() || 'rgba(255,255,255,0.6)';
       ctx.font      = '10px Inter, -apple-system, sans-serif';
       ctx.fillStyle = labelColor;
       ctx.textAlign = 'center';
@@ -357,6 +378,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const hideShortsCheckbox = document.getElementById('hideShorts');
   const hideDescriptionCheckbox = document.getElementById('hideDescription');
   const hideSuggestionsCheckbox = document.getElementById('hideSuggestions');
+  const hideFbMessengerCheckbox = document.getElementById('hideFbMessenger');
   const rememberSpeedCheckbox = document.getElementById('rememberSpeed');
   const cloudSyncCheckbox = document.getElementById('cloudSync');
   const cloudSyncDesc = document.getElementById('cloudSyncDesc');
@@ -463,6 +485,7 @@ document.addEventListener('DOMContentLoaded', () => {
     sponsorBlock: false,
     sleepTimerEnabled: false,
     sleepTimerMinutes: 30,
+    hideFbMessenger: false,
   };
 
   // Update speed display with enhanced formatting + progress-bar fill
@@ -510,6 +533,7 @@ document.addEventListener('DOMContentLoaded', () => {
     focusModeCheckbox.checked = data.focusMode || false;
     if (sponsorBlockCheckbox) sponsorBlockCheckbox.checked = data.sponsorBlock || false;
     if (sleepTimerEnabledCheckbox) sleepTimerEnabledCheckbox.checked = data.sleepTimerEnabled || false;
+    if (hideFbMessengerCheckbox) hideFbMessengerCheckbox.checked = data.hideFbMessenger || false;
     if (sleepTimerMinutesInput) sleepTimerMinutesInput.value = data.sleepTimerMinutes || 30;
     if (sleepTimerRow) sleepTimerRow.style.display = data.sleepTimerEnabled ? 'flex' : 'none';
 
@@ -547,6 +571,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const autoSubtitles = !!autoSubtitlesCheckbox.checked;
     const focusMode = !!focusModeCheckbox.checked;
     const sponsorBlock = !!(sponsorBlockCheckbox && sponsorBlockCheckbox.checked);
+    const hideFbMessenger = !!(hideFbMessengerCheckbox && hideFbMessengerCheckbox.checked);
 
     // Save universalSpeed to local storage so video-hover.js can read it
     chrome.storage.local.set({ universalSpeed });
@@ -570,6 +595,7 @@ document.addEventListener('DOMContentLoaded', () => {
       autoSubtitles,
       focusMode,
       sponsorBlock,
+      hideFbMessenger,
     }, () => {
       // Notify content script to apply changes and update speed immediately
       chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
@@ -623,6 +649,7 @@ document.addEventListener('DOMContentLoaded', () => {
   autoSubtitlesCheckbox.addEventListener('change', autoSave);
   focusModeCheckbox.addEventListener('change', autoSave);
   if (sponsorBlockCheckbox) sponsorBlockCheckbox.addEventListener('change', autoSave);
+  if (hideFbMessengerCheckbox) hideFbMessengerCheckbox.addEventListener('change', autoSave);
   if (sleepTimerEnabledCheckbox) sleepTimerEnabledCheckbox.addEventListener('change', () => {
     if (sleepTimerRow) sleepTimerRow.style.display = sleepTimerEnabledCheckbox.checked ? 'flex' : 'none';
     autoSave();
@@ -1339,6 +1366,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (tab) tab.classList.add('active');
     const panel = document.getElementById(`panel-${platform}`);
     if (panel) panel.classList.add('active');
+    // Persist the chosen platform so it is restored on next popup open
+    chrome.storage.local.set({ lastStatsPlatform: platform });
   }
 
   document.querySelectorAll('.platform-tab').forEach(tab => {
@@ -1568,6 +1597,11 @@ document.addEventListener('DOMContentLoaded', () => {
   // Load statistics on page load
   loadStatistics();
   loadSocialStats();
+
+  // Restore the last-viewed platform tab (persisted across popup opens)
+  chrome.storage.local.get(['lastStatsPlatform'], (d) => {
+    if (d.lastStatsPlatform) switchToPlatform(d.lastStatsPlatform);
+  });
 
   // ── Kebab menu toggle for platform panel actions ─────────────────────────
   ['ytKebab', 'igKebab', 'fbKebab'].forEach(id => {

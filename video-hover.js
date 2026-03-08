@@ -12,7 +12,9 @@
   let activeOverlay = null;
   let hideTimer = null;
   let positionRaf = null;   // single-frame throttle (mousemove path)
-  let anchorLoop = null;    // continuous RAF anchor â€” keeps overlay pinned to video
+  let anchorLoop = null;    // continuous RAF anchor
+  let cachedClipRect = null; // ancestor overflow-clip rect, recomputed on video change
+  let _scrollTargets = [];   // scrollable ancestors currently bound to onScroll â€” keeps overlay pinned to video
   const STORAGE_KEY  = 'universalSpeed';
   const SPEED_KEY    = 'universalSpeedValue';
 
@@ -98,14 +100,67 @@
   // â”€â”€â”€ Listener management â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   function attachListeners() {
     document.addEventListener('mousemove', onMouseMove, true);
-    // Capture-phase scroll listener: repositions the overlay synchronously on
-    // every scroll tick so it never lags behind the page by even one frame.
-    window.addEventListener('scroll', onScroll, { passive: true, capture: true });
+    // document capture-phase catches scroll on ANY element (including container
+    // divs used by Facebook/IG reels), not just window-level scroll.
+    document.addEventListener('scroll', onScroll, { passive: true, capture: true });
   }
 
   function detachListeners() {
     document.removeEventListener('mousemove', onMouseMove, true);
-    window.removeEventListener('scroll', onScroll, { capture: true });
+    document.removeEventListener('scroll', onScroll, { capture: true });
+    unbindScrollAncestors();
+  }
+
+  /**
+   * Walk up the DOM and bind scroll listeners directly to every scrollable
+   * ancestor of `video`. Scroll events fire only on the scrolling element
+   * (they don't bubble), so capture-phase on document is not 100% reliable
+   * in all browsers — direct ancestor binding is the zero-lag fallback.
+   * @param {HTMLVideoElement} video
+   */
+  function bindScrollAncestors(video) {
+    unbindScrollAncestors();
+    let el = video.parentElement;
+    while (el && el !== document.documentElement) {
+      const st = window.getComputedStyle(el);
+      const ov = st.overflow + ' ' + st.overflowX + ' ' + st.overflowY;
+      if (/auto|scroll/.test(ov) || el.scrollHeight > el.clientHeight + 1 || el.scrollWidth > el.clientWidth + 1) {
+        el.addEventListener('scroll', onScroll, { passive: true, capture: true });
+        _scrollTargets.push(el);
+      }
+      el = el.parentElement;
+    }
+  }
+
+  function unbindScrollAncestors() {
+    _scrollTargets.forEach(el => el.removeEventListener('scroll', onScroll, { capture: true }));
+    _scrollTargets = [];
+  }
+
+  /**
+   * Walk up the DOM and intersect every overflow-clipping ancestor's bounding
+   * rect with the viewport. Returns the tightest visible region for this element.
+   * Called only when the target video changes — never on the hot reposition path.
+   * @param {HTMLVideoElement} video
+   * @returns {{top:number,bottom:number,left:number,right:number}}
+   */
+  function computeClipRect(video) {
+    let top = 0, left = 0, bottom = window.innerHeight, right = window.innerWidth;
+    let el = video.parentElement;
+    while (el && el !== document.documentElement) {
+      const st = window.getComputedStyle(el);
+      const ov = st.overflow + ' ' + st.overflowX + ' ' + st.overflowY;
+      if (/hidden|clip|auto|scroll/.test(ov)) {
+        const r = el.getBoundingClientRect();
+        top    = Math.max(top,    r.top);
+        bottom = Math.min(bottom, r.bottom);
+        left   = Math.max(left,   r.left);
+        right  = Math.min(right,  r.right);
+      }
+      el = el.parentElement;
+    }
+    cachedClipRect = { top, bottom, left, right };
+    return cachedClipRect;
   }
 
   // â”€â”€â”€ Event handlers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -162,8 +217,10 @@
       if (!activeOverlay) {
         showOverlay(video);
       } else if (activeOverlay._targetVideo !== video) {
-        // Switched to a different video â€” re-anchor immediately
+        // Switched to a different video — re-anchor immediately
         activeOverlay._targetVideo = video;
+        computeClipRect(video);       // recompute clip bounds for new video
+        bindScrollAncestors(video);   // re-bind scroll to new video's ancestors
         syncSpeedUI(video);
         updateOverlayControls();
         positionOverlay(video);   // instant reposition, then loop takes over
@@ -214,10 +271,15 @@
     label.textContent = text;
   }
 
+  /** Syncs the speed label to the video — shows current playbackRate instantly,
+   *  then applies and displays the stored speed value. */
   function syncSpeedUI(video) {
     if (!activeOverlay || !video) return;
+    // Show current playbackRate immediately (synchronous, no flicker)
+    updateSpeedUI(video.playbackRate || 1);
+    // Then apply + display the persisted speed
     chrome.storage.local.get([SPEED_KEY], (data) => {
-      const s = parseFloat(data[SPEED_KEY]) || video.playbackRate || 1;
+      const s = parseFloat(data[SPEED_KEY]) || 1;
       video.playbackRate = s;
       updateSpeedUI(s);
     });
@@ -547,6 +609,8 @@
     }
 
     activeOverlay._targetVideo = video;
+    computeClipRect(video);       // compute clip bounds before first position
+    bindScrollAncestors(video);   // bind scroll to video's scrollable ancestors
     trackSocialVideo(video);
     positionOverlay(video);
     syncSpeedUI(video);
@@ -561,23 +625,40 @@
   function positionOverlay(video) {
     if (!activeOverlay || !video) return;
     const rect = video.getBoundingClientRect();
-    // If the video has scrolled off-screen or collapsed, hide the overlay
+    // Hide when the video is fully off-screen or collapsed
     if (rect.width <= 0 || rect.height <= 0 ||
         rect.bottom < 0 || rect.top > window.innerHeight ||
         rect.right  < 0 || rect.left > window.innerWidth) {
       activeOverlay.style.opacity = '0';
       return;
     }
-    activeOverlay.style.opacity = '';   // restore if it was hidden
-    // offsetWidth may be 0 on first render; fall back to a measured constant
-    const W = activeOverlay.offsetWidth > 0 ? activeOverlay.offsetWidth : 120;
+    activeOverlay.style.opacity = '';
+    const W = activeOverlay.offsetWidth  > 0 ? activeOverlay.offsetWidth  : 120;
     const H = activeOverlay.offsetHeight > 0 ? activeOverlay.offsetHeight : 26;
-    // Pin to top-right corner of the video with 6 px inset
-    let top  = rect.top  + 6;
-    let left = rect.right - W - 6;
-    // Clamp so the overlay never goes off-screen
-    top  = Math.max(4, Math.min(top,  window.innerHeight - H - 4));
-    left = Math.max(4, Math.min(left, window.innerWidth  - W - 4));
+
+    // Intersect video rect with viewport AND ancestor overflow-clip boundaries.
+    // getBoundingClientRect() ignores overflow:hidden ancestors — cachedClipRect
+    // holds the tightest clipping boundary so the overlay never escapes them.
+    const clip = cachedClipRect || { top: 0, bottom: window.innerHeight, left: 0, right: window.innerWidth };
+    const visTop    = Math.max(rect.top,    clip.top,    0);
+    const visBottom = Math.min(rect.bottom, clip.bottom, window.innerHeight);
+    const visLeft   = Math.max(rect.left,   clip.left,   0);
+    const visRight  = Math.min(rect.right,  clip.right,  window.innerWidth);
+
+    // If the visible strip is too narrow to fit the overlay, hide it
+    if (visBottom - visTop < H + 4 || visRight - visLeft < W + 4) {
+      activeOverlay.style.opacity = '0';
+      return;
+    }
+
+    // Pin to the top-right of the VISIBLE portion of the video (6 px inset)
+    let top  = visTop  + 6;
+    let left = visRight - W - 6;
+
+    // Final safety clamp: keep inside the clip region and viewport
+    top  = Math.max(clip.top + 4, Math.min(top,  window.innerHeight - H - 4));
+    left = Math.max(4,            Math.min(left, window.innerWidth  - W - 4));
+
     activeOverlay.style.top  = `${top}px`;
     activeOverlay.style.left = `${left}px`;
   }
@@ -590,6 +671,8 @@
   function removeOverlay() {
     if (!activeOverlay) return;
     stopAnchorLoop();
+    unbindScrollAncestors();
+    cachedClipRect = null;
     activeOverlay.classList.remove('vh-visible');
     const el = activeOverlay;
     activeOverlay = null;
