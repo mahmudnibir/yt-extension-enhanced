@@ -456,6 +456,35 @@
     }
   }
 
+  function getBookmarkIndexForTime(time) {
+    const target = Number.isFinite(time) ? Math.floor(time) : -1;
+    if (target < 0) return -1;
+    return bookmarks.findIndex(bm => bm.time === target);
+  }
+
+  function getRelativeBookmarkIndex(currentTime, direction) {
+    if (!bookmarks.length) return -1;
+    const sorted = [...bookmarks].sort((a, b) => a.time - b.time);
+    const targetTime = Number.isFinite(currentTime) ? Math.floor(currentTime) : 0;
+
+    if (direction === 'next') {
+      const idx = sorted.findIndex(bm => bm.time > targetTime);
+      return idx === -1 ? sorted.length - 1 : idx;
+    }
+
+    const idx = [...sorted].reverse().findIndex(bm => bm.time < targetTime);
+    return idx === -1 ? 0 : sorted.length - 1 - idx;
+  }
+
+  function jumpToBookmark(direction) {
+    if (!video || !bookmarks.length) return;
+    const targetIndex = getRelativeBookmarkIndex(video.currentTime, direction);
+    if (targetIndex < 0) return;
+    currentIndex = targetIndex;
+    video.currentTime = bookmarks[currentIndex].time;
+    updateBookmarkNavigationState();
+  }
+
   const handleKeyPress = (e) => {
     if (!video || !storageKey) return;
     if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
@@ -485,17 +514,13 @@
 
     // Next bookmark shortcut
     if (matchesShortcut(e, shortcuts.nextBookmark)) {
-      if (bookmarks.length === 0) return;
-      currentIndex = Math.min(currentIndex + 1, bookmarks.length - 1);
-      video.currentTime = bookmarks[currentIndex].time;
+      jumpToBookmark('next');
       return;
     }
 
     // Previous bookmark shortcut
     if (matchesShortcut(e, shortcuts.prevBookmark)) {
-      if (bookmarks.length === 0) return;
-      currentIndex = Math.max(currentIndex - 1, 0);
-      video.currentTime = bookmarks[currentIndex].time;
+      jumpToBookmark('prev');
       return;
     }
 
@@ -1118,31 +1143,79 @@
   // Add bookmark marker to the progress bar
   const addBookmarkMarker = (time, label = "") => {
     const progressBar = document.querySelector(".ytp-progress-bar");
-    if (!progressBar || !video) return;
+    if (!progressBar || !video || !Number.isFinite(Number(time))) return;
 
+    const warnDuration = Number(video.duration);
+    if (!Number.isFinite(warnDuration) || warnDuration <= 0) return;
+
+    const safeTime = Math.max(0, Math.min(Math.floor(time), Math.floor(warnDuration)));
     const marker = document.createElement("div");
+    const percent = Math.min(100, Math.max(0, (safeTime / warnDuration) * 100));
+
     marker.className = "yt-bookmark-marker";
-    marker.style.left = `${(time / video.duration) * 100}%`;
     marker.style.position = "absolute";
-    marker.style.width = "0";
-    marker.style.height = "0";
+    marker.style.left = `${percent}%`;
+    marker.style.top = "50%";
+    marker.style.width = "24px";
+    marker.style.height = "24px";
+    marker.style.display = "flex";
+    marker.style.alignItems = "center";
+    marker.style.justifyContent = "center";
     marker.style.cursor = "pointer";
-    marker.style.zIndex = "100";
-    marker.style.transform = "translateX(-50%)";
-    marker.title = label ? `📌 ${label} (${formatTime(time)})` : `📌 Bookmark at ${formatTime(time)}`;
-    marker.dataset.time = time;
+    marker.style.zIndex = "120";
+    marker.style.transform = "translate(-50%, -50%)";
+    marker.style.pointerEvents = "auto";
+    marker.style.filter = "drop-shadow(0 2px 8px rgba(0,0,0,.65))";
+    marker.title = label ? `📌 ${label} (${formatTime(safeTime)})` : `📌 Bookmark at ${formatTime(safeTime)}`;
+    marker.dataset.time = String(safeTime);
 
-    // Add bookmark ribbon icon in circle (aligned with timeline)
-    marker.innerHTML = `
-      <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 16px; height: 16px; background: #ff4444; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">
-        <svg viewBox="0 0 24 24" width="10" height="10" style="fill: white;">
-          <path d="M17 3H7c-1.1 0-1.99.9-1.99 2L5 21l7-3 7 3V5c0-1.1-.9-2-2-2z"></path>
-        </svg>
-      </div>
-    `;
+    // Create a bookmark flag icon instead of just a dot
+    const bookmarkIcon = document.createElement("div");
+    Object.assign(bookmarkIcon.style, {
+      width: '14px',
+      height: '18px',
+      background: '#ff5540',
+      borderRadius: '0 2px 2px 0',
+      border: '2px solid #ffffff',
+      boxSizing: 'border-box',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      transition: 'all 0.15s cubic-bezier(0.34, 1.56, 0.64, 1)',
+      position: 'relative',
+      clipPath: 'polygon(0 0, 100% 0, 100% 70%, 50% 100%, 0 70%)',
+      boxShadow: 'inset 0 0 4px rgba(255,255,255,0.3)'
+    });
 
+    // Add a small accent line at the top
+    const accent = document.createElement("div");
+    Object.assign(accent.style, {
+      position: 'absolute',
+      top: '2px',
+      left: '0',
+      right: '0',
+      height: '3px',
+      background: 'linear-gradient(90deg, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0.2) 100%)',
+      borderRadius: '1px'
+    });
+    bookmarkIcon.appendChild(accent);
+
+    marker.appendChild(bookmarkIcon);
+
+    marker.addEventListener("mouseenter", () => {
+      bookmarkIcon.style.transform = 'scale(1.25) translateY(-2px)';
+      bookmarkIcon.style.boxShadow = 'inset 0 0 6px rgba(255,255,255,0.4), 0 4px 12px rgba(255,85,64,0.5)';
+      marker.style.filter = "drop-shadow(0 4px 12px rgba(255,85,64,0.6))";
+    });
+    marker.addEventListener("mouseleave", () => {
+      bookmarkIcon.style.transform = 'scale(1)';
+      bookmarkIcon.style.boxShadow = 'inset 0 0 4px rgba(255,255,255,0.3)';
+      marker.style.filter = "drop-shadow(0 2px 8px rgba(0,0,0,.65))";
+    });
     marker.addEventListener("click", () => {
-      video.currentTime = time;
+      if (video && Number.isFinite(video.duration)) {
+        video.currentTime = safeTime;
+      }
     });
 
     progressBar.appendChild(marker);
@@ -1766,6 +1839,69 @@
       <span style="font-weight: 500;">Time Saved: <span id="time-saved-display">${formatTimeSaved(totalTimeSaved)}</span></span>
     `;
 
+    const navBar = document.createElement('div');
+    Object.assign(navBar.style, {
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: '8px',
+      padding: '0 2px',
+      marginTop: '4px'
+    });
+
+    const prevNavBtn = document.createElement('button');
+    prevNavBtn.id = 'yt-bookmark-prev';
+    prevNavBtn.textContent = 'Prev';
+    Object.assign(prevNavBtn.style, {
+      background: 'rgba(255, 255, 255, 0.08)',
+      border: '1px solid rgba(255, 255, 255, 0.1)',
+      borderRadius: '8px',
+      color: '#fff',
+      fontWeight: '600',
+      fontSize: '12px',
+      cursor: 'pointer',
+      padding: '8px 10px',
+      minWidth: '68px',
+      transition: 'background 0.2s, opacity 0.2s'
+    });
+    prevNavBtn.title = 'Previous bookmark';
+    prevNavBtn.onclick = () => jumpToBookmark('prev');
+
+    const markStatus = document.createElement('div');
+    markStatus.id = 'yt-bookmark-status';
+    markStatus.textContent = '0 / 0';
+    Object.assign(markStatus.style, {
+      flex: '1',
+      textAlign: 'center',
+      color: 'rgba(255,255,255,0.75)',
+      fontSize: '12px',
+      fontWeight: '700',
+      letterSpacing: '0.08em',
+      textTransform: 'uppercase'
+    });
+
+    const nextNavBtn = document.createElement('button');
+    nextNavBtn.id = 'yt-bookmark-next';
+    nextNavBtn.textContent = 'Next';
+    Object.assign(nextNavBtn.style, {
+      background: 'rgba(255, 255, 255, 0.08)',
+      border: '1px solid rgba(255, 255, 255, 0.1)',
+      borderRadius: '8px',
+      color: '#fff',
+      fontWeight: '600',
+      fontSize: '12px',
+      cursor: 'pointer',
+      padding: '8px 10px',
+      minWidth: '68px',
+      transition: 'background 0.2s, opacity 0.2s'
+    });
+    nextNavBtn.title = 'Next bookmark';
+    nextNavBtn.onclick = () => jumpToBookmark('next');
+
+    navBar.appendChild(prevNavBtn);
+    navBar.appendChild(markStatus);
+    navBar.appendChild(nextNavBtn);
+
     const addBtn = document.createElement('button');
     addBtn.innerHTML = `
       <svg viewBox="0 0 24 24" width="20" height="20" style="fill: white;">
@@ -1781,7 +1917,9 @@
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      transition: 'background 0.2s'
+      transition: 'background 0.2s',
+      minWidth: '36px',
+      minHeight: '36px'
     });
     addBtn.title = 'Add bookmark at current time';
     addBtn.onmouseover = () => addBtn.style.background = 'rgba(255, 255, 255, 0.2)';
@@ -1922,6 +2060,7 @@
     
     header.appendChild(headerTop);
     header.appendChild(timeSavedDiv);
+    header.appendChild(navBar);
 
     // Bookmark list container
     const listContainer = document.createElement('div');
@@ -1990,6 +2129,27 @@
     }
   }
 
+  function updateBookmarkNavigationState() {
+    const prevBtn = document.getElementById('yt-bookmark-prev');
+    const nextBtn = document.getElementById('yt-bookmark-next');
+    const statusEl = document.getElementById('yt-bookmark-status');
+    if (!prevBtn || !nextBtn || !statusEl) return;
+
+    if (bookmarks.length === 0) {
+      prevBtn.disabled = true;
+      nextBtn.disabled = true;
+      statusEl.textContent = '0 / 0';
+      return;
+    }
+
+    const currentTime = video ? Math.floor(video.currentTime) : 0;
+    const exactIndex = getBookmarkIndexForTime(currentTime);
+    const activeIndex = exactIndex >= 0 ? exactIndex + 1 : Math.max(1, getRelativeBookmarkIndex(currentTime, 'next') + 1);
+    prevBtn.disabled = false;
+    nextBtn.disabled = false;
+    statusEl.textContent = `${Math.min(activeIndex, bookmarks.length)} / ${bookmarks.length}`;
+  }
+
   // Refresh bookmark list in panel
   function refreshBookmarkList() {
     const listContainer = document.getElementById('yt-bookmark-list');
@@ -2007,6 +2167,7 @@
       });
       emptyMsg.textContent = 'No bookmarks yet. Press P or click + to add one.';
       listContainer.appendChild(emptyMsg);
+      updateBookmarkNavigationState();
       return;
     }
 
@@ -2254,6 +2415,8 @@
 
       listContainer.appendChild(item);
     });
+
+    updateBookmarkNavigationState();
   }
 
   // Undo last deletion
