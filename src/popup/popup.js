@@ -57,6 +57,15 @@ document.addEventListener('DOMContentLoaded', () => {
     overlay.querySelector('#helpClose').addEventListener('click', () => overlay.remove());
     overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
   });
+
+  const profileButton = document.getElementById('profileButton');
+  profileButton.addEventListener('click', () => {
+    showModal({
+      title: 'Profile Login',
+      message: 'Profile login and account syncing are coming soon.',
+      buttons: [{ text: 'Close', type: 'primary' }]
+    });
+  });
   // ─────────────────────────────────────────────────────────────────────────
 
   // Keyboard navigation
