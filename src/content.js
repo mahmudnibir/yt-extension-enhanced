@@ -1,8 +1,25 @@
 (function () {
+  // ─── Error Logging ─────────────────────────────────────────────────────────
+  function logError(message, error = null) {
+    const errorMsg = error ? `${message}: ${error.message}` : message;
+    console.error(`[Cognify] ${errorMsg}`);
+    try {
+      chrome.runtime.sendMessage({
+        type: 'logError',
+        message: errorMsg,
+        source: 'content',
+        error: error ? { message: error.message, stack: error.stack } : null
+      }).catch(() => {}); // Silent fail if background unavailable
+    } catch (e) {
+      console.error('Failed to send error log:', e);
+    }
+  }
+
   let bookmarks = [];
   let currentIndex = -1;
   let video = null;
   let storageKey = null;
+  let bookmarkContextToken = 0;
 
   let manualOverride = false;
   let overrideTimeout;
@@ -76,9 +93,16 @@
     }
   });
   
-  // Get storage object based on cloudSync setting
+  // Get storage object based on cloudSync setting with fallback
   function getBookmarkStorage(callback) {
+    // Set a timeout to fallback to local storage if background service worker doesn't respond
+    const timeout = setTimeout(() => {
+      console.warn('Cloud sync check timed out, using local storage as fallback');
+      callback(chrome.storage.local);
+    }, 2000);
+
     chrome.runtime.sendMessage({ type: 'getCloudSync' }, (data) => {
+      clearTimeout(timeout);
       void chrome.runtime.lastError; // consumed — SW may not be awake yet
       const useCloudSync = data && data.cloudSync !== false; // Default true
       callback(useCloudSync ? chrome.storage.sync : chrome.storage.local);
@@ -95,20 +119,36 @@
 
     const videoId = new URLSearchParams(window.location.search).get("v");
     if (!videoId) return;
-    storageKey = `yt_bm_${videoId}`;
+    const contextToken = ++bookmarkContextToken;
+    const contextStorageKey = `yt_bm_${videoId}`;
+    storageKey = contextStorageKey;
+    bookmarks = [];
+    currentIndex = -1;
+    document.querySelectorAll(".yt-bookmark-marker").forEach(el => el.remove());
 
     // Reset one-shot flags for this video
     theaterApplied = false;
     subtitlesApplied = false;
     autoFullscreenApplied = false;
 
-    getBookmarkStorage((storage) => {
-      storage.get([storageKey], (res) => {
-        bookmarks = Array.isArray(res[storageKey]) ? res[storageKey] : [];
-        bookmarks.sort((a, b) => a.time - b.time);
-        bookmarks.forEach(bm => addBookmarkMarker(bm.time, bm.label));
+    // Load bookmarks from storage with retry logic
+    const loadBookmarks = () => {
+      getBookmarkStorage((storage) => {
+        storage.get([contextStorageKey], (res) => {
+          if (contextToken !== bookmarkContextToken || storageKey !== contextStorageKey) return;
+          if (chrome.runtime.lastError) {
+            console.warn('Error loading bookmarks:', chrome.runtime.lastError);
+            setTimeout(loadBookmarks, 500); // Retry after delay
+            return;
+          }
+          bookmarks = Array.isArray(res[contextStorageKey]) ? res[contextStorageKey] : [];
+          bookmarks.sort((a, b) => a.time - b.time);
+          bookmarks.forEach(bm => addBookmarkMarker(bm.time, bm.label));
+          console.log(`Loaded ${bookmarks.length} bookmarks for video ${videoId}`);
+        });
       });
-    });
+    };
+    loadBookmarks();
 
     // Apply default volume once on initial video load
     chrome.storage.sync.get(['defaultVolume', 'defaultVolumeEnabled'], (data) => {
@@ -494,7 +534,13 @@
     if (matchesShortcut(e, shortcuts.addBookmark)) {
       const time = Math.floor(video.currentTime);
       if (!bookmarks.some(bm => bm.time === time)) {
-        const newBookmark = { time, label: "" };
+        const videoTitle = (document.title || '').replace(/\s*-\s*YouTube\s*$/, '').trim();
+        const newBookmark = {
+          time,
+          label: "",
+          videoId: new URLSearchParams(window.location.search).get("v"),
+          title: videoTitle || 'Untitled video'
+        };
         bookmarks.push(newBookmark);
         bookmarks.sort((a, b) => a.time - b.time);
         getBookmarkStorage((storage) => {
@@ -503,8 +549,18 @@
               bookmarks.pop();
               showBookmarkOverlay('Cloud sync limit reached. Switch to Local Storage in Advanced settings.');
             } else {
-              addBookmarkMarker(time);
-              currentIndex = bookmarks.findIndex(b => b.time === time);
+              // Verify bookmark was saved by reading it back
+              storage.get([storageKey], (res) => {
+                const saved = Array.isArray(res[storageKey]) ? res[storageKey] : [];
+                if (saved.length === bookmarks.length) {
+                  addBookmarkMarker(time);
+                  currentIndex = bookmarks.findIndex(b => b.time === time);
+                  console.log(`✓ Bookmark saved at ${formatTime(time)}`);
+                } else {
+                  console.warn('Bookmark save verification failed - storage may be full');
+                  showBookmarkOverlay('Failed to save bookmark. Check storage.');
+                }
+              });
             }
           });
         });
@@ -3446,6 +3502,15 @@
   init();
   observeUrlChange();
   initTimeLimitHud();
+
+  // ─── Global Error Handlers ─────────────────────────────────────────────────
+  window.addEventListener('error', (event) => {
+    logError(`JS Error: ${event.message}`, event.error);
+  });
+
+  window.addEventListener('unhandledrejection', (event) => {
+    logError(`Unhandled Promise: ${event.reason}`, event.reason instanceof Error ? event.reason : null);
+  });
 
   // ── Edge-HUD instant toggle relay ─────────────────────────────────────────
   // edge-hud.js dispatches this event when a focus-control toggle is clicked.

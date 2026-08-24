@@ -2,6 +2,11 @@ function sortBookmarks(bookmarks) {
   return [...bookmarks].sort((a, b) => a.time - b.time);
 }
 
+function getBookmarkStorageKey(videoId) {
+  if (typeof videoId !== 'string' || videoId.trim() === '') return null;
+  return `yt_bm_${videoId.trim()}`;
+}
+
 function findBookmarkIndex(bookmarks, time) {
   const idx = bookmarks.findIndex((bm) => bm.time === time);
   return idx >= 0 ? idx : -1;
@@ -25,6 +30,7 @@ function findRelativeBookmarkIndex(bookmarks, currentTime, direction) {
 
 module.exports = {
   sortBookmarks,
+  getBookmarkStorageKey,
   findBookmarkIndex,
   findRelativeBookmarkIndex,
 };

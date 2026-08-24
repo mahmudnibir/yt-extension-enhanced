@@ -1487,6 +1487,135 @@
     #helpGuideBody::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.28); }
     #helpGuideBody { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.15) transparent; }
     
+    /* Developer Tools Button */
+    .dev-btn {
+      padding: 8px 16px;
+      background: linear-gradient(135deg, var(--accent-color), rgba(255, 85, 64, 0.8));
+      border: none;
+      border-radius: 8px;
+      color: white;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    
+    .dev-btn:hover {
+      background: linear-gradient(135deg, var(--accent-hover), rgba(255, 85, 64, 1));
+      box-shadow: 0 4px 12px rgba(255, 85, 64, 0.3);
+    }
+    
+    .dev-btn:active {
+      transform: scale(0.98);
+    }
+    
+    /* Error Log Modal */
+    .error-log-modal {
+      max-width: 600px;
+      width: 95%;
+      max-height: 70vh;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .error-log-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border-color);
+    }
+    
+    .error-log-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+    
+    .error-log-count {
+      background: var(--accent-color);
+      color: white;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 12px;
+      min-width: 30px;
+      text-align: center;
+    }
+    
+    .error-log-list {
+      flex: 1;
+      overflow-y: auto;
+      margin-bottom: 12px;
+      border-radius: 8px;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      max-height: 300px;
+    }
+    
+    .error-log-empty {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 120px;
+      color: rgba(255, 255, 255, 0.4);
+      font-size: 13px;
+      text-align: center;
+      padding: 16px;
+    }
+    
+    .error-log-item {
+      padding: 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      font-family: 'SF Mono', 'Monaco', 'Courier New', monospace;
+      font-size: 11px;
+      line-height: 1.5;
+    }
+    
+    .error-log-item:last-child {
+      border-bottom: none;
+    }
+    
+    .error-log-time {
+      color: rgba(255, 85, 64, 0.8);
+      font-weight: 600;
+      font-size: 10px;
+    }
+    
+    .error-log-source {
+      color: rgba(121, 194, 255, 0.8);
+      font-weight: 600;
+      font-size: 10px;
+      margin-top: 2px;
+    }
+    
+    .error-log-message {
+      color: rgba(255, 255, 255, 0.9);
+      margin-top: 4px;
+      word-break: break-word;
+      white-space: pre-wrap;
+    }
+    
+    .error-log-list::-webkit-scrollbar {
+      width: 6px;
+    }
+    
+    .error-log-list::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    
+    .error-log-list::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 3px;
+    }
+    
+    .error-log-list::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.25);
+    }
+    
     /* Footer */
     footer {
       border-top: 1px solid var(--border-color);
@@ -1558,6 +1687,23 @@
       height: 12px;
     }
     
+    /* Bookmark library */
+    .bookmark-subtabs { display: flex; gap: 6px; margin: 12px 0 8px; border-bottom: 1px solid rgba(96, 62, 57, 0.3); }
+    .bookmark-subtab { border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--text-secondary); cursor: pointer; font: inherit; font-size: 11px; font-weight: 700; padding: 7px 4px; }
+    .bookmark-subtab.active { border-bottom-color: var(--accent-color); color: var(--text-primary); }
+    .bookmark-library { display: flex; flex-direction: column; gap: 8px; max-height: 265px; overflow-y: auto; padding-right: 2px; }
+    .bookmark-library-empty { border: 1px dashed var(--border-color); border-radius: 8px; color: var(--text-secondary); font-size: 11px; line-height: 1.5; padding: 14px 12px; text-align: center; }
+    .bookmark-library-header { align-items: center; color: var(--text-secondary); display: flex; font-size: 10px; font-weight: 700; justify-content: space-between; margin: 10px 0 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .bookmark-video-total { background: var(--icon-bg); border: 1px solid var(--border-color); border-radius: 999px; color: var(--text-primary); padding: 4px 8px; }
+    .bookmark-video { background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 8px; cursor: pointer; display: flex; gap: 10px; min-width: 0; padding: 8px; transition: background 0.2s, border-color 0.2s; }
+    .bookmark-video:hover, .bookmark-video:focus-visible { background: var(--bg-card-hover); border-color: var(--border-color-hover); outline: none; }
+    .bookmark-thumbnail { background: var(--bg-card); border-radius: 5px; flex: 0 0 92px; height: 52px; object-fit: cover; width: 92px; }
+    .bookmark-video-body { min-width: 0; flex: 1; }
+    .bookmark-video-title { color: var(--text-primary); display: block; font-size: 11px; font-weight: 700; line-height: 1.35; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .bookmark-video-count { color: var(--text-secondary); font-size: 9px; margin-top: 2px; }
+    .bookmark-times { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+    .bookmark-time { background: rgba(255, 0, 0, 0.12); border: 1px solid rgba(255, 0, 0, 0.25); border-radius: 4px; color: var(--accent-color); cursor: pointer; font-size: 9px; padding: 3px 5px; }
+    .bookmark-time:hover, .bookmark-time:focus-visible { background: rgba(255, 0, 0, 0.25); outline: none; }
   </style>
 </head>
 <body>
@@ -2808,23 +2954,38 @@
         <div class="info-text">
           Press <kbd>P</kbd> on any video to add bookmarks
         </div>
-        <button class="btn-export" id="exportBookmarksBtn">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-            <polyline points="17 8 12 3 7 8"></polyline>
-            <line x1="12" y1="3" x2="12" y2="15"></line>
-          </svg>
-          Export Bookmarks
-        </button>
-        <input type="file" id="importBookmarksFile" accept=".json" style="display:none;">
-        <button class="btn-import" id="importBookmarksBtn">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-            <polyline points="7 16 12 21 17 16"></polyline>
-            <line x1="12" y1="9" x2="12" y2="21"></line>
-          </svg>
-          Import Bookmarks
-        </button>
+        <div class="bookmark-subtabs" role="tablist" aria-label="Bookmark views">
+          <button class="bookmark-subtab active" id="bookmarkLibraryTab" role="tab" aria-selected="true">Bookmark library</button>
+          <button class="bookmark-subtab" id="bookmarkBackupTab" role="tab" aria-selected="false">Import / export</button>
+        </div>
+        <div id="bookmarkLibraryPanel" class="bookmark-library-panel" role="tabpanel" aria-labelledby="bookmarkLibraryTab">
+          <div class="bookmark-library-header">
+            <span>Saved videos</span>
+            <span id="bookmarkVideoCount" class="bookmark-video-total">0 videos</span>
+          </div>
+          <div id="bookmarkLibrary" class="bookmark-library" aria-live="polite">
+            <div class="bookmark-library-empty">Loading saved videos...</div>
+          </div>
+        </div>
+        <div id="bookmarkBackupPanel" class="bookmark-backup-panel" role="tabpanel" aria-labelledby="bookmarkBackupTab" hidden>
+          <button class="btn-export" id="exportBookmarksBtn">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="17 8 12 3 7 8"></polyline>
+              <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+            Export Bookmarks
+          </button>
+          <input type="file" id="importBookmarksFile" accept=".json" style="display:none;">
+          <button class="btn-import" id="importBookmarksBtn">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 16 12 21 17 16"></polyline>
+              <line x1="12" y1="9" x2="12" y2="21"></line>
+            </svg>
+            Import Bookmarks
+          </button>
+        </div>
       </section>
 
       <!-- Playback Presets -->
@@ -3065,6 +3226,26 @@
           </div>
         </div>
       </section>
+
+      <!-- Error Log Section (Development) -->
+      <section>
+        <h2>Developer Tools</h2>
+        <div class="setting-item-full">
+          <div class="setting-info">
+            <div class="setting-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
+                <polyline points="17 6 23 6 23 12"></polyline>
+              </svg>
+            </div>
+            <div class="setting-content">
+              <div class="setting-title">Error Logs</div>
+              <div class="setting-desc">View extension errors and debug information</div>
+            </div>
+          </div>
+          <button id="errorLogBtn" class="dev-btn">View Logs</button>
+        </div>
+      </section>
       </div>
     </main>
     
@@ -3078,7 +3259,7 @@
           </div>
         </div>
         <div class="footer-actions">
-          <a href="https://mahmudnibir.github.io/yt-extension-enhanced/" target="_blank" class="footer-btn" title="Extension Website">
+          <a href="https://mahmudnibir.github.io/Cognify/" target="_blank" class="footer-btn" title="Extension Website">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="12" cy="12" r="10"></circle>
               <line x1="2" y1="12" x2="22" y2="12"></line>

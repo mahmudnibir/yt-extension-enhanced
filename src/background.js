@@ -1,6 +1,32 @@
-import ytdl from 'ytdl-core-browser';
-
 // background.js
+// Note: ytdl-core-browser is not available in service worker context
+// YouTube download functionality requires a different approach
+
+// ─── Error Logging System (Development) ─────────────────────────────────────
+const ERROR_LOG_KEY = 'extensionErrorLogs';
+const MAX_ERROR_LOGS = 100; // Keep last 100 errors
+
+function addErrorLog(message, source = 'background', error = null) {
+  const timestamp = Date.now();
+  const errorMsg = error ? `${message} | ${error.message}` : message;
+  
+  chrome.storage.local.get([ERROR_LOG_KEY], (data) => {
+    let logs = data[ERROR_LOG_KEY] || [];
+    logs.push({ timestamp, message: errorMsg, source });
+    // Keep only last MAX_ERROR_LOGS
+    if (logs.length > MAX_ERROR_LOGS) logs = logs.slice(-MAX_ERROR_LOGS);
+    chrome.storage.local.set({ [ERROR_LOG_KEY]: logs });
+  });
+}
+
+// Capture unhandled errors and promise rejections
+self.addEventListener('error', (event) => {
+  addErrorLog(`Error: ${event.message}`, 'background', event.error);
+});
+
+self.addEventListener('unhandledrejection', (event) => {
+  addErrorLog(`Unhandled Promise Rejection: ${event.reason}`, 'background');
+});
 
 // ─── CDN segment cache ───────────────────────────────────────────────────────
 // Maps tabId → Map<basePath, { url: string, byteEnd: number }>
@@ -358,19 +384,39 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     const videoId = request.videoId;
     const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
 
-    (async () => {
-      try {
-        const info = await ytdl.getInfo(videoUrl);
-        const format = ytdl.chooseFormat(info.formats, { quality: 'highest' });
-        chrome.downloads.download({
-          url: format.url,
-          filename: `${info.videoDetails.title}.mp4`,
-          saveAs: true
+    // YouTube video download is handled by the content script using yt-dlp or similar
+    // Service worker cannot directly use npm packages for this task
+    // Delegate to content script or open download page
+    chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
+      if (tabs.length > 0) {
+        chrome.tabs.sendMessage(tabs[0].id, {
+          type: 'initiateYouTubeDownload',
+          videoUrl: videoUrl,
+          videoId: videoId
+        }).catch((err) => {
+          console.error('Could not send download message to content script:', err);
+          addErrorLog(`Failed to send download message: ${err.message}`, 'background', err);
         });
-      } catch (error) {
-        console.error('Error downloading video:', error);
       }
-    })();
+    });
     return true; // Indicates that the response is sent asynchronously
   }
+  if (request.type === 'getErrorLogs') {
+    chrome.storage.local.get([ERROR_LOG_KEY], (data) => {
+      sendResponse({ logs: data[ERROR_LOG_KEY] || [] });
+    });
+    return true;
+  }
+  if (request.type === 'clearErrorLogs') {
+    chrome.storage.local.set({ [ERROR_LOG_KEY]: [] }, () => {
+      sendResponse({ success: true });
+    });
+    return true;
+  }
+  if (request.type === 'logError') {
+    const { message, source, error } = request;
+    addErrorLog(message, source || 'content', error);
+    sendResponse({ success: true });
+  }
 });
+

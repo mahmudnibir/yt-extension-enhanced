@@ -1,5 +1,9 @@
 const assert = require('node:assert/strict');
-const { findRelativeBookmarkIndex, sortBookmarks } = require('../src/bookmark-utils.js');
+const { findRelativeBookmarkIndex, sortBookmarks, getBookmarkStorageKey } = require('../src/bookmark-utils.js');
+
+assert.equal(getBookmarkStorageKey('video-a'), 'yt_bm_video-a');
+assert.equal(getBookmarkStorageKey(' video-b '), 'yt_bm_video-b');
+assert.equal(getBookmarkStorageKey(''), null);
 
 const bookmarks = sortBookmarks([
   { time: 10, label: 'start' },

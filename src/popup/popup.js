@@ -396,6 +396,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const exportBookmarksBtn = document.getElementById('exportBookmarksBtn');
   const importBookmarksBtn = document.getElementById('importBookmarksBtn');
   const importBookmarksFile = document.getElementById('importBookmarksFile');
+  const bookmarkLibrary = document.getElementById('bookmarkLibrary');
+  const bookmarkLibraryTab = document.getElementById('bookmarkLibraryTab');
+  const bookmarkBackupTab = document.getElementById('bookmarkBackupTab');
+  const bookmarkLibraryPanel = document.getElementById('bookmarkLibraryPanel');
+  const bookmarkBackupPanel = document.getElementById('bookmarkBackupPanel');
+  const bookmarkVideoCount = document.getElementById('bookmarkVideoCount');
   const sponsorBlockCheckbox      = document.getElementById('sponsorBlock');
   const sleepTimerEnabledCheckbox = document.getElementById('sleepTimerEnabled');
   const sleepTimerRow             = document.getElementById('sleepTimerRow');
@@ -406,6 +412,116 @@ document.addEventListener('DOMContentLoaded', () => {
   const setLoopBBtn               = document.getElementById('setLoopB');
   const clearLoopBtnEl            = document.getElementById('clearLoopBtn');
   const loopDisplayEl             = document.getElementById('loopDisplay');
+
+  function formatBookmarkTime(seconds) {
+    const safeSeconds = Math.max(0, Math.floor(Number(seconds) || 0));
+    const hours = Math.floor(safeSeconds / 3600);
+    const minutes = Math.floor((safeSeconds % 3600) / 60);
+    const remaining = String(safeSeconds % 60).padStart(2, '0');
+    return hours ? `${hours}:${String(minutes).padStart(2, '0')}:${remaining}` : `${minutes}:${remaining}`;
+  }
+
+  function renderBookmarkLibrary(data) {
+    if (!bookmarkLibrary) return;
+    bookmarkLibrary.textContent = '';
+    const videos = Object.entries(data || {})
+      .filter(([key, marks]) => key.startsWith('yt_bm_') && Array.isArray(marks) && marks.length)
+      .map(([key, marks]) => ({
+        videoId: key.slice(6),
+        bookmarks: marks.filter(mark => Number.isFinite(Number(mark.time))).sort((a, b) => Number(a.time) - Number(b.time))
+      }))
+      .filter(video => video.bookmarks.length)
+      .sort((a, b) => b.bookmarks.length - a.bookmarks.length);
+    if (bookmarkVideoCount) {
+      bookmarkVideoCount.textContent = `${videos.length} video${videos.length === 1 ? '' : 's'}`;
+    }
+
+    if (!videos.length) {
+      const empty = document.createElement('div');
+      empty.className = 'bookmark-library-empty';
+      empty.textContent = 'No bookmarked videos yet. Press P while watching a YouTube video.';
+      bookmarkLibrary.appendChild(empty);
+      return;
+    }
+
+    videos.forEach(({ videoId, bookmarks }) => {
+      const card = document.createElement('article');
+      card.className = 'bookmark-video';
+      card.tabIndex = 0;
+      card.setAttribute('role', 'link');
+      card.title = 'Open video in a new tab';
+      const videoUrl = `https://www.youtube.com/watch?v=${encodeURIComponent(videoId)}`;
+      const openVideo = () => chrome.tabs.create({ url: videoUrl });
+      card.addEventListener('click', (event) => {
+        if (!event.target.closest('.bookmark-time')) openVideo();
+      });
+      card.addEventListener('keydown', (event) => {
+        if ((event.key === 'Enter' || event.key === ' ') && !event.target.closest('.bookmark-time')) {
+          event.preventDefault();
+          openVideo();
+        }
+      });
+      const thumbnail = document.createElement('img');
+      thumbnail.className = 'bookmark-thumbnail';
+      thumbnail.src = `https://i.ytimg.com/vi/${encodeURIComponent(videoId)}/hqdefault.jpg`;
+      thumbnail.alt = '';
+      thumbnail.loading = 'lazy';
+      thumbnail.onerror = () => { thumbnail.src = '../../icons/icon-48.png'; };
+      const body = document.createElement('div');
+      body.className = 'bookmark-video-body';
+      const title = document.createElement('span');
+      title.className = 'bookmark-video-title';
+      title.textContent = bookmarks.find(mark => mark.title)?.title || `YouTube video (${videoId})`;
+      title.title = title.textContent;
+      const count = document.createElement('div');
+      count.className = 'bookmark-video-count';
+      count.textContent = `${bookmarks.length} bookmark${bookmarks.length === 1 ? '' : 's'}`;
+      const times = document.createElement('div');
+      times.className = 'bookmark-times';
+      bookmarks.forEach(mark => {
+        const button = document.createElement('button');
+        button.className = 'bookmark-time';
+        button.type = 'button';
+        button.textContent = mark.label ? `${formatBookmarkTime(mark.time)} · ${mark.label}` : formatBookmarkTime(mark.time);
+        button.title = 'Open this bookmark on YouTube';
+        button.addEventListener('click', (event) => {
+          event.stopPropagation();
+          chrome.tabs.create({ url: `${videoUrl}&t=${Math.floor(Number(mark.time))}s` });
+        });
+        times.appendChild(button);
+      });
+      body.append(title, count, times);
+      card.append(thumbnail, body);
+      bookmarkLibrary.appendChild(card);
+    });
+  }
+
+  function loadBookmarkLibrary() {
+    chrome.storage.sync.get(['cloudSync'], (result) => {
+      const storage = result.cloudSync !== false ? chrome.storage.sync : chrome.storage.local;
+      storage.get(null, (data) => {
+        if (chrome.runtime.lastError) {
+          renderBookmarkLibrary({});
+          return;
+        }
+        renderBookmarkLibrary(data);
+      });
+    });
+  }
+
+  function showBookmarkView(view) {
+    const isLibrary = view === 'library';
+    bookmarkLibraryTab.classList.toggle('active', isLibrary);
+    bookmarkBackupTab.classList.toggle('active', !isLibrary);
+    bookmarkLibraryTab.setAttribute('aria-selected', String(isLibrary));
+    bookmarkBackupTab.setAttribute('aria-selected', String(!isLibrary));
+    bookmarkLibraryPanel.hidden = !isLibrary;
+    bookmarkBackupPanel.hidden = isLibrary;
+  }
+
+  bookmarkLibraryTab.addEventListener('click', () => showBookmarkView('library'));
+  bookmarkBackupTab.addEventListener('click', () => showBookmarkView('backup'));
+  loadBookmarkLibrary();
 
   /**
    * Builds a select-like proxy object around the custom div dropdown.
@@ -792,6 +908,7 @@ document.addEventListener('DOMContentLoaded', () => {
               if (chrome.runtime.lastError) {
                 showModal({ title: 'Import Failed', message: `Import failed: ${chrome.runtime.lastError.message}`, buttons: [{ text: 'OK', type: 'primary' }] });
               } else {
+                loadBookmarkLibrary();
                 showModal({ title: 'Import Successful', message: `✅ Imported ${keys.length} video(s) of bookmarks successfully!`, buttons: [{ text: 'OK', type: 'primary' }] });
               }
             });
@@ -841,6 +958,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Migrate bookmarks between storage types
     await migrateBookmarks(isCloudSync);
+    loadBookmarkLibrary();
     
     autoSave();
   });
@@ -1849,6 +1967,76 @@ document.addEventListener('DOMContentLoaded', () => {
         saveScreenTimeLimits();
       });
   });
+
+  // ── Error Log Display (Development) ─────────────────────────────────────────
+  const errorLogBtn = document.getElementById('errorLogBtn');
+  if (errorLogBtn) {
+    errorLogBtn.addEventListener('click', () => {
+      // Request error logs from background service worker
+      chrome.runtime.sendMessage({ type: 'getErrorLogs' }, (response) => {
+        const logs = (response && response.logs) || [];
+        
+        const overlay = document.createElement('div');
+        overlay.className = 'modal-overlay';
+        overlay.innerHTML = `
+          <div class="modal error-log-modal">
+            <div class="error-log-header">
+              <div class="error-log-title">Error Logs</div>
+              <div class="error-log-count">${logs.length}</div>
+            </div>
+            <div class="error-log-list" id="errorList">
+              ${logs.length === 0 ? `
+                <div class="error-log-empty">
+                  ✓ No errors logged<br><small>Errors will appear here</small>
+                </div>
+              ` : `
+                ${logs.map(log => `
+                  <div class="error-log-item">
+                    <div class="error-log-time">${new Date(log.timestamp).toLocaleTimeString()}</div>
+                    <div class="error-log-source">${log.source}</div>
+                    <div class="error-log-message">${escapeHtml(log.message)}</div>
+                  </div>
+                `).join('')}
+              `}
+            </div>
+            <div class="modal-actions">
+              <button class="modal-btn modal-btn-secondary" id="copyLogsBtn">Copy to Clipboard</button>
+              <button class="modal-btn modal-btn-primary" id="clearLogsBtn">Clear Logs</button>
+              <button class="modal-btn modal-btn-neutral" id="closeLogsBtn">Close</button>
+            </div>
+          </div>
+        `;
+        document.body.appendChild(overlay);
+        
+        // Close button
+        overlay.querySelector('#closeLogsBtn').addEventListener('click', () => overlay.remove());
+        overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+        
+        // Copy logs to clipboard
+        overlay.querySelector('#copyLogsBtn').addEventListener('click', () => {
+          const text = logs.map(l => `[${new Date(l.timestamp).toLocaleTimeString()}] [${l.source}] ${l.message}`).join('\n');
+          navigator.clipboard.writeText(text).then(() => {
+            const btn = overlay.querySelector('#copyLogsBtn');
+            btn.textContent = 'Copied!';
+            setTimeout(() => btn.textContent = 'Copy to Clipboard', 2000);
+          });
+        });
+        
+        // Clear logs
+        overlay.querySelector('#clearLogsBtn').addEventListener('click', () => {
+          chrome.runtime.sendMessage({ type: 'clearErrorLogs' }, () => {
+            overlay.remove();
+          });
+        });
+      });
+    });
+  }
+
+  // Helper to escape HTML
+  function escapeHtml(text) {
+    const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+    return text.replace(/[&<>"']/g, m => map[m]);
+  }
 
   // ── Additional feature event listeners ───────────────────────────────────
   document.getElementById('exportYtCsv')?.addEventListener('click', () => exportStatsCSV('yt'));

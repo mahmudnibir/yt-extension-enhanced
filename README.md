@@ -15,7 +15,7 @@
 | Speed Control | Playback speed from 0.25× to 20× via slider |
 | Speed Presets | Quick-access 1.25×, 1.5×, 1.75×, 2× buttons in the Advanced tab |
 | Universal Video Speed | Hover overlay on **any** video across the entire web — toggle in settings |
-| Bookmarks | Cloud-synced video timestamps with labels, import & export as JSON |
+| Bookmark Library | Browse bookmarked videos with thumbnails, titles, video counts, labels, and exact timestamp links; cloud sync, import & export included |
 | Ad Skip | Automatically skips YouTube advertisements |
 | SponsorBlock | Auto-skip sponsor segments via community data |
 | Content Filters | Hide comments, shorts, description, or suggested videos |
