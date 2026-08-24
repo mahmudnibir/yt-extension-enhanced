@@ -2167,7 +2167,13 @@
     
     const time = Math.floor(video.currentTime);
     if (!bookmarks.some(bm => bm.time === time)) {
-      const newBookmark = { time, label: "" };
+      const videoTitle = (document.title || '').replace(/\s*-\s*YouTube\s*$/, '').trim();
+      const newBookmark = {
+        time,
+        label: "",
+        videoId: new URLSearchParams(window.location.search).get("v"),
+        title: videoTitle || 'Untitled video'
+      };
       bookmarks.push(newBookmark);
       bookmarks.sort((a, b) => a.time - b.time);
       getBookmarkStorage((storage) => {
