@@ -103,6 +103,9 @@
 <a class="text-[#E5E2E1] opacity-70 hover:opacity-100 font-['Inter'] uppercase tracking-[0.05rem] text-sm transition-all duration-300" href="#install">Install</a>
 <a href="https://github.com/mahmudnibir/yt-extension-enhanced/archive/refs/heads/main.zip" class="bg-primary-container text-on-primary-container px-6 py-2 rounded-xl font-bold hover:scale-95 duration-200 transition-all">Install Extension</a>
 </nav>
+<button id="profileButton" type="button" aria-label="Open profile" title="Profile login coming soon" class="text-[#E5E2E1] opacity-80 hover:opacity-100 transition-all duration-300 flex items-center justify-center">
+<span class="material-symbols-outlined text-2xl">account_circle</span>
+</button>
 <button class="md:hidden text-on-surface">
 <span class="material-symbols-outlined">menu</span>
 </button>
@@ -504,4 +507,24 @@
             MIT © 2026 MAHMUD NIBIR. ALL RIGHTS RESERVED.
         </p>
 </footer>
+<dialog id="profileDialog" class="bg-[#201f1f] text-[#E5E2E1] border border-[#603e39] rounded-xl p-0 backdrop:bg-black/60">
+<div class="w-[min(22rem,calc(100vw-2rem))] p-6">
+<div class="flex items-center gap-3 mb-4">
+<span class="material-symbols-outlined text-[#FF5540] text-3xl">account_circle</span>
+<h2 class="text-xl font-bold">Profile login</h2>
+</div>
+<p class="text-[#EBBBB4] leading-relaxed mb-6">Profile login and account syncing are coming soon.</p>
+<form method="dialog" class="flex justify-end">
+<button class="bg-[#FF5540] text-[#5C0000] px-5 py-2 rounded-lg font-bold hover:brightness-110 transition-all">Close</button>
+</form>
+</div>
+</dialog>
+<script>
+    const profileButton = document.getElementById('profileButton');
+    const profileDialog = document.getElementById('profileDialog');
+    profileButton.addEventListener('click', () => profileDialog.showModal());
+    profileDialog.addEventListener('click', (event) => {
+        if (event.target === profileDialog) profileDialog.close();
+    });
+</script>
 </body></html>

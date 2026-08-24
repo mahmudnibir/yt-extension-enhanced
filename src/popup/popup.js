@@ -402,6 +402,20 @@ document.addEventListener('DOMContentLoaded', () => {
   const bookmarkLibraryPanel = document.getElementById('bookmarkLibraryPanel');
   const bookmarkBackupPanel = document.getElementById('bookmarkBackupPanel');
   const bookmarkVideoCount = document.getElementById('bookmarkVideoCount');
+
+  function closeBookmarkManageMenus() {
+    document.querySelectorAll('.bookmark-manage-menu').forEach((menu) => {
+      menu.hidden = true;
+      menu.style.display = 'none';
+    });
+  }
+
+  document.addEventListener('click', (event) => {
+    if (!event.target.closest('.bookmark-manage-menu, .bookmark-manage-button')) {
+      closeBookmarkManageMenus();
+    }
+  });
+  document.addEventListener('scroll', closeBookmarkManageMenus, true);
   const sponsorBlockCheckbox      = document.getElementById('sponsorBlock');
   const sleepTimerEnabledCheckbox = document.getElementById('sleepTimerEnabled');
   const sleepTimerRow             = document.getElementById('sleepTimerRow');
@@ -421,9 +435,103 @@ document.addEventListener('DOMContentLoaded', () => {
     return hours ? `${hours}:${String(minutes).padStart(2, '0')}:${remaining}` : `${minutes}:${remaining}`;
   }
 
+  let bookmarkUndoEntry = null;
+  let bookmarkUndoTimer = null;
+
+  function getBookmarkLibraryStorage(callback) {
+    chrome.storage.sync.get(['cloudSync'], (result) => {
+      callback(result.cloudSync !== false ? chrome.storage.sync : chrome.storage.local);
+    });
+  }
+
+  function showBookmarkUndoNotice() {
+    if (!bookmarkLibrary || !bookmarkUndoEntry) return;
+    const remainingSeconds = Math.max(0, Math.ceil((bookmarkUndoEntry.expiresAt - Date.now()) / 1000));
+    if (remainingSeconds === 0) {
+      bookmarkUndoEntry = null;
+      return;
+    }
+
+    const notice = document.createElement('div');
+    notice.className = 'bookmark-undo-notice';
+    Object.assign(notice.style, {
+      alignItems: 'center',
+      background: 'var(--bg-card-hover)',
+      border: '1px solid var(--border-color-hover)',
+      borderRadius: '6px',
+      color: 'var(--text-primary)',
+      display: 'flex',
+      fontSize: '11px',
+      justifyContent: 'space-between',
+      marginBottom: '8px',
+      padding: '8px 10px'
+    });
+    const message = document.createElement('span');
+    message.textContent = `Bookmark${bookmarkUndoEntry.bookmarks.length === 1 ? '' : 's'} deleted (${remainingSeconds}s)`;
+    const undoButton = document.createElement('button');
+    undoButton.type = 'button';
+    undoButton.textContent = 'Undo';
+    Object.assign(undoButton.style, {
+      background: 'transparent',
+      border: '1px solid var(--border-color-hover)',
+      borderRadius: '4px',
+      color: 'var(--text-primary)',
+      cursor: 'pointer',
+      fontSize: '11px',
+      padding: '3px 8px'
+    });
+    undoButton.onclick = () => undoBookmarkLibraryDeletion();
+    notice.append(message, undoButton);
+    bookmarkLibrary.appendChild(notice);
+  }
+
+  function deleteBookmarkLibraryItems(videoId, times) {
+    const storageKey = `yt_bm_${videoId}`;
+    getBookmarkLibraryStorage((storage) => {
+      storage.get([storageKey], (result) => {
+        const currentBookmarks = Array.isArray(result[storageKey]) ? result[storageKey] : [];
+        const deletedBookmarks = currentBookmarks.filter((bookmark) => times.includes(Number(bookmark.time)));
+        const remainingBookmarks = currentBookmarks.filter((bookmark) => !times.includes(Number(bookmark.time)));
+        if (!deletedBookmarks.length) return;
+
+        storage.set({ [storageKey]: remainingBookmarks }, () => {
+          if (chrome.runtime.lastError) return;
+          clearTimeout(bookmarkUndoTimer);
+          bookmarkUndoEntry = {
+            storageKey,
+            bookmarks: deletedBookmarks,
+            expiresAt: Date.now() + 10000
+          };
+          bookmarkUndoTimer = setTimeout(() => {
+            bookmarkUndoEntry = null;
+            loadBookmarkLibrary();
+          }, 10000);
+          loadBookmarkLibrary();
+        });
+      });
+    });
+  }
+
+  function undoBookmarkLibraryDeletion() {
+    if (!bookmarkUndoEntry || bookmarkUndoEntry.expiresAt <= Date.now()) return;
+    const entry = bookmarkUndoEntry;
+    clearTimeout(bookmarkUndoTimer);
+    getBookmarkLibraryStorage((storage) => {
+      storage.get([entry.storageKey], (result) => {
+        const currentBookmarks = Array.isArray(result[entry.storageKey]) ? result[entry.storageKey] : [];
+        storage.set({ [entry.storageKey]: [...currentBookmarks, ...entry.bookmarks] }, () => {
+          if (chrome.runtime.lastError) return;
+          bookmarkUndoEntry = null;
+          loadBookmarkLibrary();
+        });
+      });
+    });
+  }
+
   function renderBookmarkLibrary(data) {
     if (!bookmarkLibrary) return;
     bookmarkLibrary.textContent = '';
+    showBookmarkUndoNotice();
     const videos = Object.entries(data || {})
       .filter(([key, marks]) => key.startsWith('yt_bm_') && Array.isArray(marks) && marks.length)
       .map(([key, marks]) => ({
@@ -447,6 +555,7 @@ document.addEventListener('DOMContentLoaded', () => {
     videos.forEach(({ videoId, bookmarks }) => {
       const card = document.createElement('article');
       card.className = 'bookmark-video';
+      card.style.position = 'relative';
       card.tabIndex = 0;
       card.setAttribute('role', 'link');
       card.title = 'Open video in a new tab';
@@ -455,6 +564,80 @@ document.addEventListener('DOMContentLoaded', () => {
       card.addEventListener('click', (event) => {
         if (!event.target.closest('.bookmark-time')) openVideo();
       });
+      const manageButton = document.createElement('button');
+      manageButton.className = 'bookmark-manage-button';
+      manageButton.type = 'button';
+      manageButton.title = 'Manage bookmarks for this video';
+      manageButton.setAttribute('aria-label', 'Manage bookmarks for this video');
+      manageButton.innerHTML = '<span aria-hidden="true">&#8942;</span>';
+      Object.assign(manageButton.style, {
+        background: 'var(--icon-bg)',
+        border: '1px solid var(--border-color)',
+        borderRadius: '4px',
+        color: 'var(--text-primary)',
+        cursor: 'pointer',
+        fontSize: '18px',
+        lineHeight: '14px',
+        padding: '2px 7px',
+        position: 'absolute',
+        right: '8px',
+        top: '8px',
+        zIndex: '1'
+      });
+      manageButton.addEventListener('click', (event) => {
+        event.stopPropagation();
+        const wasOpen = !menu.hidden;
+        closeBookmarkManageMenus();
+        if (!wasOpen) {
+          menu.hidden = false;
+          menu.style.display = 'grid';
+        }
+      });
+      card.appendChild(manageButton);
+      const menu = document.createElement('div');
+      menu.className = 'bookmark-manage-menu';
+      menu.hidden = true;
+      Object.assign(menu.style, {
+        background: 'var(--bg-card)',
+        border: '1px solid var(--border-color-hover)',
+        borderRadius: '5px',
+        display: 'none',
+        gap: '3px',
+        padding: '4px',
+        position: 'absolute',
+        right: '8px',
+        top: '36px',
+        zIndex: '2'
+      });
+      const addManageAction = (label, action) => {
+        const actionButton = document.createElement('button');
+        actionButton.type = 'button';
+        actionButton.textContent = label;
+        Object.assign(actionButton.style, {
+          background: 'transparent',
+          border: 'none',
+          color: 'var(--text-primary)',
+          cursor: 'pointer',
+          fontSize: '10px',
+          padding: '6px 8px',
+          textAlign: 'left',
+          whiteSpace: 'nowrap'
+        });
+        actionButton.onclick = (event) => {
+          event.stopPropagation();
+          menu.hidden = true;
+          action();
+        };
+        menu.appendChild(actionButton);
+      };
+      bookmarks.forEach((bookmark) => {
+        addManageAction(`Delete ${formatBookmarkTime(bookmark.time)}`, () => {
+          deleteBookmarkLibraryItems(videoId, [Number(bookmark.time)]);
+        });
+      });
+      addManageAction('Delete all for this video', () => deleteBookmarkLibraryItems(videoId, bookmarks.map(bookmark => Number(bookmark.time))));
+      menu.addEventListener('click', (event) => event.stopPropagation());
+      card.appendChild(menu);
       card.addEventListener('keydown', (event) => {
         if ((event.key === 'Enter' || event.key === ' ') && !event.target.closest('.bookmark-time')) {
           event.preventDefault();

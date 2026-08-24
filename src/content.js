@@ -24,6 +24,7 @@
   let manualOverride = false;
   let overrideTimeout;
   let deletedBookmarks = [];
+  const deletionUndoWindowMs = 10000;
 
   // Per-video one-shot flags — reset each time init() finds a new video
   let theaterApplied = false;
@@ -2247,6 +2248,12 @@
       });
       item.dataset.expanded = 'false';
 
+      item.addEventListener('contextmenu', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        showBookmarkContextMenu(event.clientX, event.clientY, index);
+      });
+
       // Top row container
       const topRow = document.createElement('div');
       Object.assign(topRow.style, {
@@ -2419,19 +2426,35 @@
       deleteBtn.onmouseout = () => deleteBtn.style.background = 'rgba(255, 68, 68, 0.1)';
       deleteBtn.onclick = (e) => {
         e.stopPropagation();
-        
-        // Add to deletion stack
-        deletedBookmarks.push({ bookmark: { ...bm }, index: index });
-        
-        // Remove bookmark
-        bookmarks.splice(index, 1);
-        getBookmarkStorage((storage) => {
-          storage.set({ [storageKey]: bookmarks }, () => {
-            refreshMarkers();
-            refreshBookmarkList();
-            updateUndoButton();
-          });
-        });
+        deleteBookmarks([index]);
+      };
+
+      const moreBtn = document.createElement('button');
+      moreBtn.type = 'button';
+      moreBtn.innerHTML = `
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="white">
+          <circle cx="5" cy="12" r="2"></circle>
+          <circle cx="12" cy="12" r="2"></circle>
+          <circle cx="19" cy="12" r="2"></circle>
+        </svg>
+      `;
+      Object.assign(moreBtn.style, {
+        background: 'rgba(255, 255, 255, 0.1)',
+        border: 'none',
+        borderRadius: '6px',
+        padding: '6px',
+        cursor: 'pointer',
+        display: 'flex',
+        alignItems: 'center',
+        transition: 'background 0.2s'
+      });
+      moreBtn.title = 'Manage bookmarks for this video';
+      moreBtn.onmouseover = () => moreBtn.style.background = 'rgba(255, 255, 255, 0.2)';
+      moreBtn.onmouseout = () => moreBtn.style.background = 'rgba(255, 255, 255, 0.1)';
+      moreBtn.onclick = (e) => {
+        e.stopPropagation();
+        const buttonRect = moreBtn.getBoundingClientRect();
+        showBookmarkContextMenu(buttonRect.right, buttonRect.bottom, index);
       };
 
       // Copy timestamp link (copies https://youtu.be/ID?t=N to clipboard)
@@ -2471,6 +2494,7 @@
       topRow.appendChild(labelInput);
       topRow.appendChild(jumpBtn);
       topRow.appendChild(copyLinkBtn);
+      topRow.appendChild(moreBtn);
       topRow.appendChild(deleteBtn);
 
       item.appendChild(topRow);
@@ -2481,17 +2505,127 @@
     updateBookmarkNavigationState();
   }
 
+  function showBookmarkContextMenu(x, y, bookmarkIndex) {
+    document.querySelectorAll('.yt-bookmark-context-menu').forEach((menu) => menu.remove());
+
+    const menu = document.createElement('div');
+    menu.className = 'yt-bookmark-context-menu';
+    Object.assign(menu.style, {
+      position: 'fixed',
+      zIndex: '2147483647',
+      minWidth: '190px',
+      padding: '4px',
+      background: '#1f1f1f',
+      border: '1px solid rgba(255, 255, 255, 0.18)',
+      borderRadius: '6px',
+      boxShadow: '0 8px 24px rgba(0, 0, 0, 0.45)',
+      color: '#fff',
+      fontSize: '13px'
+    });
+
+    const addMenuItem = (label, action) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = label;
+      Object.assign(button.style, {
+        display: 'block',
+        width: '100%',
+        padding: '8px 10px',
+        border: 'none',
+        borderRadius: '4px',
+        background: 'transparent',
+        color: 'inherit',
+        textAlign: 'left',
+        cursor: 'pointer'
+      });
+      button.onmouseover = () => button.style.background = 'rgba(255, 255, 255, 0.12)';
+      button.onmouseout = () => button.style.background = 'transparent';
+      button.onclick = (event) => {
+        event.stopPropagation();
+        menu.remove();
+        action();
+      };
+      menu.appendChild(button);
+    };
+
+    addMenuItem('Delete bookmark', () => deleteBookmarks([bookmarkIndex]));
+    addMenuItem('Delete all for this video', () => deleteBookmarks(bookmarks.map((_, index) => index)));
+    menu.addEventListener('click', (event) => event.stopPropagation());
+    menu.addEventListener('contextmenu', (event) => event.preventDefault());
+    document.body.appendChild(menu);
+
+    const menuRect = menu.getBoundingClientRect();
+    menu.style.left = `${Math.max(4, Math.min(x, window.innerWidth - menuRect.width - 4))}px`;
+    menu.style.top = `${Math.max(4, Math.min(y, window.innerHeight - menuRect.height - 4))}px`;
+
+    const closeMenu = () => {
+      menu.remove();
+      document.removeEventListener('click', closeMenu);
+      document.removeEventListener('scroll', closeMenu, true);
+    };
+    setTimeout(() => {
+      document.addEventListener('click', closeMenu, { once: true });
+      document.addEventListener('scroll', closeMenu, { once: true, capture: true });
+    }, 0);
+  }
+
+  function deleteBookmarks(indices) {
+    const uniqueIndices = [...new Set(indices)]
+      .filter((index) => Number.isInteger(index) && index >= 0 && index < bookmarks.length)
+      .sort((a, b) => a - b);
+    if (!storageKey || uniqueIndices.length === 0) return;
+
+    const deleted = uniqueIndices.map((index) => ({
+      bookmark: { ...bookmarks[index] },
+      index
+    }));
+    const remaining = bookmarks.filter((_, index) => !uniqueIndices.includes(index));
+
+    getBookmarkStorage((storage) => {
+      storage.set({ [storageKey]: remaining }, () => {
+        if (chrome.runtime.lastError) {
+          showBookmarkOverlay('Could not delete bookmark(s). Please try again.');
+          return;
+        }
+
+        bookmarks.splice(0, bookmarks.length, ...remaining);
+        const undoEntry = {
+          deleted,
+          expiresAt: Date.now() + deletionUndoWindowMs,
+          timeout: null
+        };
+        undoEntry.timeout = setTimeout(() => {
+          const entryIndex = deletedBookmarks.indexOf(undoEntry);
+          if (entryIndex >= 0) deletedBookmarks.splice(entryIndex, 1);
+          updateUndoButton();
+        }, deletionUndoWindowMs);
+        deletedBookmarks.push(undoEntry);
+        refreshMarkers();
+        refreshBookmarkList();
+        updateUndoButton();
+      });
+    });
+  }
+
   // Undo last deletion
   function undoLastDeletion() {
     if (deletedBookmarks.length === 0) return;
-    
+
     const lastDeleted = deletedBookmarks.pop();
-    bookmarks.splice(lastDeleted.index, 0, lastDeleted.bookmark);
+    clearTimeout(lastDeleted.timeout);
+    if (lastDeleted.expiresAt <= Date.now()) {
+      updateUndoButton();
+      return;
+    }
+
+    lastDeleted.deleted.forEach(({ bookmark, index }) => {
+      bookmarks.splice(Math.min(index, bookmarks.length), 0, bookmark);
+    });
     
     getBookmarkStorage((storage) => {
       storage.set({ [storageKey]: bookmarks }, () => {
         if (chrome.runtime.lastError) {
-          bookmarks.splice(lastDeleted.index, 1);
+          lastDeleted.deleted.slice().reverse().forEach(({ index }) => bookmarks.splice(index, 1));
           deletedBookmarks.push(lastDeleted);
           showBookmarkOverlay('Cloud sync limit reached. Switch to Local Storage in Advanced settings.');
         } else {
