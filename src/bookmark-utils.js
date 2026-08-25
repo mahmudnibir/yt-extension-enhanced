@@ -28,9 +28,69 @@ function findRelativeBookmarkIndex(bookmarks, currentTime, direction) {
   return prevIndex === -1 ? 0 : safeBookmarks.length - 1 - prevIndex;
 }
 
-module.exports = {
+function getBookmarkVideos(data) {
+  return Object.entries(data || {})
+    .filter(([key, marks]) => key.startsWith('yt_bm_') && Array.isArray(marks))
+    .map(([key, marks]) => {
+      const bookmarks = marks
+        .filter((mark) => Number.isFinite(Number(mark.time)))
+        .map((mark) => ({ ...mark, time: Number(mark.time) }))
+        .sort((a, b) => a.time - b.time);
+      return {
+        videoId: key.slice(6),
+        bookmarks,
+        title: bookmarks.find((mark) => mark.title)?.title || `YouTube video (${key.slice(6)})`,
+        channel: bookmarks.find((mark) => mark.channel)?.channel || '',
+        duration: Number(bookmarks.find((mark) => Number.isFinite(Number(mark.duration)))?.duration || 0),
+        lastViewedAt: bookmarks.reduce((latest, mark) => Math.max(latest, Date.parse(mark.createdAt || mark.viewedAt || '') || 0), 0),
+      };
+    })
+    .filter((video) => video.bookmarks.length);
+}
+
+function filterBookmarkVideos(videos, filters = {}) {
+  const query = String(filters.query || '').trim().toLowerCase();
+  const label = String(filters.label || '').trim().toLowerCase();
+  const channel = String(filters.channel || '').trim().toLowerCase();
+  const maxDuration = Number(filters.maxDuration);
+  const since = filters.since ? Date.parse(filters.since) : 0;
+
+  return (Array.isArray(videos) ? videos : []).filter((video) => {
+    const searchable = `${video.title} ${video.videoId} ${video.channel} ${video.bookmarks.map((mark) => mark.label || '').join(' ')}`.toLowerCase();
+    if (query && !searchable.includes(query)) return false;
+    if (label && !video.bookmarks.some((mark) => String(mark.label || '').toLowerCase().includes(label))) return false;
+    if (channel && !String(video.channel || '').toLowerCase().includes(channel)) return false;
+    if (since && video.lastViewedAt && video.lastViewedAt < since) return false;
+    if (Number.isFinite(maxDuration) && maxDuration > 0 && video.duration > maxDuration) return false;
+    return true;
+  });
+}
+
+function getBookmarkRecommendations(videos, viewedVideoIds = []) {
+  const viewed = new Set(Array.isArray(viewedVideoIds) ? viewedVideoIds : []);
+  return (Array.isArray(videos) ? videos : [])
+    .filter((video) => !viewed.has(video.videoId))
+    .slice()
+    .sort((a, b) => (b.bookmarks.length - a.bookmarks.length) || (b.lastViewedAt - a.lastViewedAt))
+    .slice(0, 3);
+}
+
+function findShortcutConflict(shortcuts, candidate, action) {
+  const normalized = String(candidate || '').trim().toLowerCase();
+  if (!normalized) return null;
+  return Object.entries(shortcuts || {}).find(([name, shortcut]) => name !== action && String(shortcut).trim().toLowerCase() === normalized)?.[0] || null;
+}
+
+const bookmarkUtils = {
   sortBookmarks,
   getBookmarkStorageKey,
   findBookmarkIndex,
   findRelativeBookmarkIndex,
+  getBookmarkVideos,
+  filterBookmarkVideos,
+  getBookmarkRecommendations,
+  findShortcutConflict,
 };
+
+if (typeof module !== 'undefined') module.exports = bookmarkUtils;
+if (typeof globalThis !== 'undefined') globalThis.CognifyBookmarkUtils = bookmarkUtils;

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Cognify – Smart Study Automation for Your Browser",
-  "version": "3.8.0",
+  "version": "3.9.0",
   "description": "Cognify supercharges your browser with smart study automation — screen-time limits, focus mode, ad-skip, cloud-synced bookmarks, universal video controls, and real-time watch analytics across YouTube, Instagram, and Facebook.",
   "author": "Mahmud Nibir",
   "homepage_url": "https://github.com/mahmudnibir/yt-extension-enhanced",

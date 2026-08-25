@@ -411,6 +411,119 @@ document.addEventListener('DOMContentLoaded', () => {
   const bookmarkLibraryPanel = document.getElementById('bookmarkLibraryPanel');
   const bookmarkBackupPanel = document.getElementById('bookmarkBackupPanel');
   const bookmarkVideoCount = document.getElementById('bookmarkVideoCount');
+  const bookmarkSearch = document.getElementById('bookmarkSearch');
+  const bookmarkLabelFilter = document.getElementById('bookmarkLabelFilter');
+  const bookmarkChannelFilter = document.getElementById('bookmarkChannelFilter');
+  const bookmarkDurationFilter = document.getElementById('bookmarkDurationFilter');
+  const bookmarkDateFilter = document.getElementById('bookmarkDateFilter');
+  const bookmarkFolderSelect = document.getElementById('bookmarkFolderSelect');
+  const bookmarkFolderPicker = document.getElementById('bookmarkFolderPicker');
+  const bookmarkFolderTrigger = document.getElementById('bookmarkFolderTrigger');
+  const bookmarkFolderLabel = document.getElementById('bookmarkFolderLabel');
+  const bookmarkFolderOptions = document.getElementById('bookmarkFolderOptions');
+  const newBookmarkFolderBtn = document.getElementById('newBookmarkFolderBtn');
+  const shareBookmarkCollectionBtn = document.getElementById('shareBookmarkCollectionBtn');
+  const bookmarkRecommendations = document.getElementById('bookmarkRecommendations');
+  const profilePreset = document.getElementById('profilePreset');
+  const themePreference = document.getElementById('themePreference');
+  const startTutorialBtn = document.getElementById('startTutorialBtn');
+  const whatsNewBtn = document.getElementById('whatsNewBtn');
+  const tipsGuideBtn = document.getElementById('tipsGuideBtn');
+  const showSyncQrBtn = document.getElementById('showSyncQrBtn');
+  let bookmarkCollections = { folders: {}, shared: [] };
+  let bookmarkLibraryData = {};
+
+  function setupCustomSelect(select, pickerId, triggerId, labelId, optionsId) {
+    const picker = document.getElementById(pickerId);
+    const trigger = document.getElementById(triggerId);
+    const label = document.getElementById(labelId);
+    const options = document.getElementById(optionsId);
+    if (!select || !picker || !trigger || !label || !options) return;
+
+    const sync = () => {
+      const selected = [...select.options].find((option) => option.value === select.value) || select.options[0];
+      if (selected) label.textContent = selected.textContent;
+      options.querySelectorAll('.cognify-select-option').forEach((option) => {
+        option.setAttribute('aria-selected', String(option.dataset.value === select.value));
+      });
+    };
+    [...select.options].forEach((sourceOption) => {
+      const option = document.createElement('button');
+      option.type = 'button';
+      option.className = 'cognify-select-option';
+      option.dataset.value = sourceOption.value;
+      option.setAttribute('role', 'option');
+      option.textContent = sourceOption.textContent;
+      option.addEventListener('click', () => {
+        select.value = sourceOption.value;
+        select.dispatchEvent(new Event('change'));
+        options.hidden = true;
+        picker.classList.remove('open');
+        trigger.setAttribute('aria-expanded', 'false');
+      });
+      options.appendChild(option);
+    });
+    trigger.addEventListener('click', (event) => {
+      event.stopPropagation();
+      const open = options.hidden;
+      options.hidden = !open;
+      picker.classList.toggle('open', open);
+      trigger.setAttribute('aria-expanded', String(open));
+    });
+    select.addEventListener('change', sync);
+    sync();
+  }
+
+  setupCustomSelect(bookmarkDurationFilter, 'bookmarkDurationPicker', 'bookmarkDurationTrigger', 'bookmarkDurationLabel', 'bookmarkDurationOptions');
+  setupCustomSelect(profilePreset, 'profilePicker', 'profileTrigger', 'profileLabel', 'profileOptions');
+  setupCustomSelect(themePreference, 'themePicker', 'themeTrigger', 'themeLabel', 'themeOptions');
+
+  function saveBookmarkCollections(callback) {
+    getBookmarkLibraryStorage((storage) => storage.set({ bookmarkCollections }, callback));
+  }
+
+  function refreshBookmarkFolderOptions() {
+    if (!bookmarkFolderSelect) return;
+    const selected = bookmarkFolderSelect.value || 'all';
+    bookmarkFolderSelect.textContent = '';
+    const folders = [['all', 'All collections'], ...Object.keys(bookmarkCollections.folders || {}).map((name) => [name, name])];
+    folders.forEach(([value, label]) => {
+        const option = document.createElement('option');
+        option.value = value;
+        option.textContent = label;
+        bookmarkFolderSelect.appendChild(option);
+      });
+    bookmarkFolderSelect.value = [...bookmarkFolderSelect.options].some((option) => option.value === selected) ? selected : 'all';
+    if (bookmarkFolderLabel) bookmarkFolderLabel.textContent = folders.find(([value]) => value === bookmarkFolderSelect.value)?.[1] || 'All collections';
+    if (bookmarkFolderOptions) {
+      bookmarkFolderOptions.textContent = '';
+      folders.forEach(([value, label]) => {
+        const option = document.createElement('button');
+        option.type = 'button';
+        option.className = 'cognify-select-option';
+        option.setAttribute('role', 'option');
+        option.setAttribute('aria-selected', String(value === bookmarkFolderSelect.value));
+        option.textContent = label;
+        option.addEventListener('click', () => {
+          bookmarkFolderSelect.value = value;
+          bookmarkFolderLabel.textContent = label;
+          bookmarkFolderOptions.hidden = true;
+          bookmarkFolderTrigger.setAttribute('aria-expanded', 'false');
+          bookmarkFolderSelect.dispatchEvent(new Event('change'));
+        });
+        bookmarkFolderOptions.appendChild(option);
+      });
+    }
+  }
+
+  function renderBookmarkRecommendations(videos) {
+    if (!bookmarkRecommendations) return;
+    const recommendations = CognifyBookmarkUtils.getBookmarkRecommendations(videos, []);
+    bookmarkRecommendations.hidden = recommendations.length === 0;
+    bookmarkRecommendations.textContent = recommendations.length
+      ? `Recommended from your viewing patterns: ${recommendations.map((video) => video.title).join(' · ')}`
+      : '';
+  }
 
   function closeBookmarkManageMenus() {
     document.querySelectorAll('.bookmark-manage-menu').forEach((menu) => {
@@ -539,16 +652,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function renderBookmarkLibrary(data) {
     if (!bookmarkLibrary) return;
+    bookmarkLibraryData = data || {};
     bookmarkLibrary.textContent = '';
     showBookmarkUndoNotice();
-    const videos = Object.entries(data || {})
-      .filter(([key, marks]) => key.startsWith('yt_bm_') && Array.isArray(marks) && marks.length)
-      .map(([key, marks]) => ({
-        videoId: key.slice(6),
-        bookmarks: marks.filter(mark => Number.isFinite(Number(mark.time))).sort((a, b) => Number(a.time) - Number(b.time))
-      }))
+    let videos = CognifyBookmarkUtils.getBookmarkVideos(data)
+      .filter((video) => !bookmarkFolderSelect || bookmarkFolderSelect.value === 'all' || bookmarkCollections.folders[video.videoId] === bookmarkFolderSelect.value)
       .filter(video => video.bookmarks.length)
       .sort((a, b) => b.bookmarks.length - a.bookmarks.length);
+    videos = CognifyBookmarkUtils.filterBookmarkVideos(videos, {
+      query: bookmarkSearch?.value,
+      label: bookmarkLabelFilter?.value,
+      channel: bookmarkChannelFilter?.value,
+      maxDuration: bookmarkDurationFilter?.value,
+      since: bookmarkDateFilter?.value,
+    });
+    renderBookmarkRecommendations(videos);
     if (bookmarkVideoCount) {
       bookmarkVideoCount.textContent = `${videos.length} video${videos.length === 1 ? '' : 's'}`;
     }
@@ -585,12 +703,17 @@ document.addEventListener('DOMContentLoaded', () => {
         borderRadius: '4px',
         color: 'var(--text-primary)',
         cursor: 'pointer',
-        fontSize: '18px',
-        lineHeight: '14px',
-        padding: '2px 7px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: '16px',
+        lineHeight: '1',
+        padding: '0',
         position: 'absolute',
-        right: '8px',
-        top: '8px',
+        right: '7px',
+        top: '7px',
+        width: '26px',
+        height: '26px',
         zIndex: '1'
       });
       manageButton.addEventListener('click', (event) => {
@@ -644,6 +767,12 @@ document.addEventListener('DOMContentLoaded', () => {
           deleteBookmarkLibraryItems(videoId, [Number(bookmark.time)]);
         });
       });
+      Object.keys(bookmarkCollections.folders || {}).forEach((folder) => {
+        addManageAction(`Move to ${folder}`, () => {
+          bookmarkCollections.folders[videoId] = folder;
+          saveBookmarkCollections(() => renderBookmarkLibrary(bookmarkLibraryData));
+        });
+      });
       addManageAction('Delete all for this video', () => deleteBookmarkLibraryItems(videoId, bookmarks.map(bookmark => Number(bookmark.time))));
       menu.addEventListener('click', (event) => event.stopPropagation());
       card.appendChild(menu);
@@ -689,13 +818,44 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function loadBookmarkLibrary() {
+    if (!globalThis.chrome?.storage?.sync) {
+      refreshBookmarkFolderOptions();
+      renderBookmarkLibrary({});
+      return;
+    }
+    const sharedCollection = new URLSearchParams(location.search).get('collection');
     chrome.storage.sync.get(['cloudSync'], (result) => {
       const storage = result.cloudSync !== false ? chrome.storage.sync : chrome.storage.local;
+      if (sharedCollection) {
+        try {
+          const imported = JSON.parse(decodeURIComponent(sharedCollection));
+          if (imported?.name && imported.bookmarks && typeof imported.bookmarks === 'object') {
+            storage.get(['bookmarkCollections'], (existing) => {
+              const existingCollections = existing.bookmarkCollections || { folders: {}, shared: [] };
+              const mergedCollections = {
+                folders: { ...(existingCollections.folders || {}), [imported.name]: imported.name },
+                shared: existingCollections.shared || [],
+              };
+              storage.set({ ...imported.bookmarks, bookmarkCollections: mergedCollections }, () => {
+                history.replaceState({}, document.title, location.pathname);
+                loadBookmarkLibrary();
+              });
+            });
+            return;
+          }
+        } catch {
+          showModal({ title: 'Invalid collection link', message: 'This shared collection link could not be imported.', buttons: [{ text: 'OK', type: 'primary' }] });
+        }
+      }
       storage.get(null, (data) => {
         if (chrome.runtime.lastError) {
           renderBookmarkLibrary({});
           return;
         }
+        bookmarkCollections = data.bookmarkCollections && typeof data.bookmarkCollections === 'object'
+          ? { folders: data.bookmarkCollections.folders || {}, shared: data.bookmarkCollections.shared || [] }
+          : { folders: {}, shared: [] };
+        refreshBookmarkFolderOptions();
         renderBookmarkLibrary(data);
       });
     });
@@ -713,6 +873,46 @@ document.addEventListener('DOMContentLoaded', () => {
 
   bookmarkLibraryTab.addEventListener('click', () => showBookmarkView('library'));
   bookmarkBackupTab.addEventListener('click', () => showBookmarkView('backup'));
+  [bookmarkSearch, bookmarkLabelFilter, bookmarkChannelFilter, bookmarkDurationFilter, bookmarkDateFilter, bookmarkFolderSelect]
+    .filter(Boolean)
+    .forEach((control) => control.addEventListener('input', () => renderBookmarkLibrary(bookmarkLibraryData)));
+  bookmarkFolderSelect?.addEventListener('change', () => renderBookmarkLibrary(bookmarkLibraryData));
+  bookmarkFolderTrigger?.addEventListener('click', (event) => {
+    event.stopPropagation();
+    const isOpen = !bookmarkFolderOptions.hidden;
+    bookmarkFolderOptions.hidden = isOpen;
+    bookmarkFolderPicker.classList.toggle('open', !isOpen);
+    bookmarkFolderTrigger.setAttribute('aria-expanded', String(!isOpen));
+  });
+  bookmarkFolderOptions?.addEventListener('click', (event) => event.stopPropagation());
+  document.addEventListener('click', () => {
+    if (!bookmarkFolderOptions?.hidden) {
+      bookmarkFolderOptions.hidden = true;
+      bookmarkFolderPicker?.classList.remove('open');
+      bookmarkFolderTrigger?.setAttribute('aria-expanded', 'false');
+    }
+  });
+  newBookmarkFolderBtn?.addEventListener('click', () => {
+    const name = window.prompt('Collection name');
+    const cleanName = String(name || '').trim().slice(0, 40);
+    if (!cleanName) return;
+    bookmarkCollections.folders[cleanName] = bookmarkCollections.folders[cleanName] || '';
+    refreshBookmarkFolderOptions();
+    bookmarkFolderSelect.value = cleanName;
+    saveBookmarkCollections(() => renderBookmarkLibrary(bookmarkLibraryData));
+  });
+  shareBookmarkCollectionBtn?.addEventListener('click', () => {
+    const folder = bookmarkFolderSelect.value;
+    if (!folder || folder === 'all') {
+      showModal({ title: 'Choose a collection', message: 'Select a collection before creating a share link.', buttons: [{ text: 'OK', type: 'primary' }] });
+      return;
+    }
+    const shared = Object.entries(bookmarkLibraryData)
+      .filter(([key]) => key.startsWith('yt_bm_') && bookmarkCollections.folders[key.slice(6)] === folder)
+      .reduce((result, [key, value]) => ({ ...result, [key]: value }), {});
+    const link = `${location.origin}${location.pathname}?collection=${encodeURIComponent(JSON.stringify({ name: folder, bookmarks: shared }))}`;
+    navigator.clipboard.writeText(link).then(() => showModal({ title: 'Collection link copied', message: 'Anyone with this link can import a read-only copy of the collection.', buttons: [{ text: 'OK', type: 'primary' }] })).catch(() => showModal({ title: 'Share link', message: link, buttons: [{ text: 'Close', type: 'primary' }] }));
+  });
   loadBookmarkLibrary();
 
   /**
@@ -820,7 +1020,7 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   // Load stored settings with animation
-  chrome.storage.sync.get(defaults, (data) => {
+  if (globalThis.chrome?.storage?.sync) chrome.storage.sync.get(defaults, (data) => {
     speedInput.value = data.speed;
     skipAdsCheckbox.checked = data.skipAds;
     hideCommentsCheckbox.checked = data.hideComments || false;
@@ -1044,7 +1244,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Load current loop state when popup opens (only on YouTube tabs)
-  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+  if (globalThis.chrome?.tabs?.query) chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
     if (tabs[0] && tabs[0].url && tabs[0].url.includes('youtube.com')) {
       chrome.tabs.sendMessage(tabs[0].id, { action: 'getLoopState' }, (response) => {
         if (chrome.runtime.lastError || !response) return;
@@ -1205,6 +1405,66 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  const profileSettings = {
+    student: { speed: '1.5', focusMode: true, autoSubtitles: true, watchedProgress: true },
+    professional: { speed: '1.25', focusMode: true, autoSubtitles: false, watchedProgress: true },
+    casual: { speed: '1.0', focusMode: false, autoSubtitles: false, watchedProgress: false },
+  };
+
+  function applyTheme(preference) {
+    const prefersLight = window.matchMedia?.('(prefers-color-scheme: light)').matches;
+    document.body.dataset.theme = preference === 'system' ? (prefersLight ? 'light' : 'dark') : preference;
+  }
+
+  if (globalThis.chrome?.storage?.sync) chrome.storage.sync.get({ themePreference: 'system', profilePreset: '' }, (data) => {
+    if (themePreference) themePreference.value = data.themePreference;
+    if (profilePreset) profilePreset.value = data.profilePreset;
+    applyTheme(data.themePreference);
+  });
+  themePreference?.addEventListener('change', () => {
+    applyTheme(themePreference.value);
+    chrome.storage.sync.set({ themePreference: themePreference.value });
+  });
+  profilePreset?.addEventListener('change', () => {
+    const settings = profileSettings[profilePreset.value];
+    if (!settings) return;
+    chrome.storage.sync.set({ ...settings, profilePreset: profilePreset.value }, () => window.location.reload());
+  });
+
+  async function runTutorial() {
+    const steps = [
+      ['Welcome to Cognify', 'Press P while watching YouTube to capture a timestamp bookmark.'],
+      ['Organize', 'Open Advanced > Bookmarks to search, filter, and move saved videos into collections.'],
+      ['Make it yours', 'Choose a profile, customize shortcuts, and use the feature guide whenever you need a refresher.'],
+    ];
+    for (const [title, message] of steps) {
+      const finished = await showModal({ title, message, buttons: [{ text: 'Continue', type: 'primary' }] });
+      if (!finished) break;
+    }
+    chrome.storage.sync.set({ tutorialComplete: true });
+  }
+  startTutorialBtn?.addEventListener('click', runTutorial);
+  tipsGuideBtn?.addEventListener('click', () => expandToggle.click());
+  whatsNewBtn?.addEventListener('click', () => showModal({ title: "What's new in 3.9", message: 'Collections, search filters, recommendations, profiles, theme controls, onboarding, and QR preference sync are now available.', buttons: [{ text: 'Got it', type: 'primary' }] }));
+  if (globalThis.chrome?.storage?.sync) chrome.storage.sync.get({ tutorialComplete: false, lastSeenVersion: '' }, (data) => {
+    if (!data.tutorialComplete) runTutorial();
+    if (data.lastSeenVersion !== '3.9.0') {
+      showModal({ title: "What's new", message: 'Cognify now includes collections, smarter bookmark discovery, profiles, and preference sync.', buttons: [{ text: 'Explore', type: 'primary' }] });
+      chrome.storage.sync.set({ lastSeenVersion: '3.9.0' });
+    }
+  });
+  showSyncQrBtn?.addEventListener('click', () => {
+    chrome.storage.sync.get(['shortcuts', 'themePreference', 'profilePreset', 'speed', 'focusMode'], (settings) => {
+      const payload = encodeURIComponent(JSON.stringify({ type: 'cognify-settings', version: 1, settings }));
+      const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${payload}`;
+      const overlay = document.createElement('div');
+      overlay.className = 'modal-overlay';
+      overlay.innerHTML = `<div class="modal"><div class="modal-header"><div class="modal-title">Sync preferences</div></div><div class="modal-body"><img class="sync-qr" src="${qrUrl}" alt="QR code containing Cognify preferences"><p>Scan this code from another Cognify install. Bookmark content is not included.</p></div><div class="modal-actions"><button class="modal-btn modal-btn-primary" id="qrClose">Close</button></div></div>`;
+      document.body.appendChild(overlay);
+      overlay.querySelector('#qrClose').onclick = () => overlay.remove();
+    });
+  });
+
   // Default shortcuts
   const defaultShortcuts = {
     addBookmark: 'P',
@@ -1224,7 +1484,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Load and apply custom shortcuts
   let customShortcuts = {};
-  chrome.storage.sync.get(['shortcuts'], (data) => {
+  if (globalThis.chrome?.storage?.sync) chrome.storage.sync.get(['shortcuts'], (data) => {
     customShortcuts = data.shortcuts || {};
     updateShortcutDisplays();
   });
@@ -1302,6 +1562,16 @@ document.addEventListener('DOMContentLoaded', () => {
       shortcut += e.key.toUpperCase();
     } else {
       shortcut += e.key;
+    }
+
+    const conflict = CognifyBookmarkUtils.findShortcutConflict({ ...defaultShortcuts, ...customShortcuts }, shortcut, recordingAction);
+    if (conflict) {
+      const input = document.querySelector(`.shortcut-input[data-action="${recordingAction}"]`);
+      input.classList.remove('recording');
+      input.textContent = customShortcuts[recordingAction] || defaultShortcuts[recordingAction];
+      recordingAction = null;
+      showModal({ title: 'Shortcut already in use', message: `That combination is assigned to ${conflict}. Choose a different shortcut.`, buttons: [{ text: 'OK', type: 'primary' }] });
+      return;
     }
 
     // Save the shortcut
@@ -1641,6 +1911,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function loadStatistics() {
+    if (!globalThis.chrome?.storage?.local) return;
     chrome.storage.local.get(['statistics'], (data) => {
       const stats = data.statistics || {
         totalVideos: 0,
@@ -1771,6 +2042,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // ─── Social stats (Instagram / Facebook) ────────────────────────────────
   function loadSocialStats() {
+    if (!globalThis.chrome?.storage?.local) return;
     const today = new Date().toDateString();
     const weekAgo = new Date();
     weekAgo.setDate(weekAgo.getDate() - 7);
@@ -1823,6 +2095,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Instagram
+    if (!globalThis.chrome?.storage?.local) return;
     chrome.storage.local.get(['igStats'], (data) => {
       const daily = (data.igStats || {}).dailyData || {};
       const todayD = daily[today] || {};
@@ -1994,7 +2267,7 @@ document.addEventListener('DOMContentLoaded', () => {
   loadSocialStats();
 
   // Restore the last-viewed platform tab (persisted across popup opens)
-  chrome.storage.local.get(['lastStatsPlatform'], (d) => {
+  if (globalThis.chrome?.storage?.local) chrome.storage.local.get(['lastStatsPlatform'], (d) => {
     if (d.lastStatsPlatform) switchToPlatform(d.lastStatsPlatform);
   });
 
@@ -2141,7 +2414,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Load screen time limit values on popup open
-  chrome.storage.sync.get(['ytLimitEnabled', 'ytDailyLimit', 'igLimitEnabled', 'igDailyLimit', 'fbLimitEnabled', 'fbDailyLimit'], (d) => {
+  if (globalThis.chrome?.storage?.sync) chrome.storage.sync.get(['ytLimitEnabled', 'ytDailyLimit', 'igLimitEnabled', 'igDailyLimit', 'fbLimitEnabled', 'fbDailyLimit'], (d) => {
     const el = id => document.getElementById(id);
     if (el('ytLimitEnabled')) { el('ytLimitEnabled').checked = !!d.ytLimitEnabled; applyLimitCardState('yt'); }
     if (el('ytDailyLimit'))   el('ytDailyLimit').value    = d.ytDailyLimit  || 120;

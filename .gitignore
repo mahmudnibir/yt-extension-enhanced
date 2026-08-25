@@ -21,6 +21,7 @@ build/
 # Chrome extension pack output
 *.crx
 *.pem
+chrome-web-store-guide.pdf
 
 # Temp / backup files
 *.bak

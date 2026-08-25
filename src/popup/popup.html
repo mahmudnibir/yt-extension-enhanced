@@ -119,6 +119,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="popup.css">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     
@@ -1704,7 +1705,7 @@
     .bookmark-video { background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 8px; cursor: pointer; display: flex; gap: 10px; min-width: 0; padding: 8px; transition: background 0.2s, border-color 0.2s; }
     .bookmark-video:hover, .bookmark-video:focus-visible { background: var(--bg-card-hover); border-color: var(--border-color-hover); outline: none; }
     .bookmark-thumbnail { background: var(--bg-card); border-radius: 5px; flex: 0 0 92px; height: 52px; object-fit: cover; width: 92px; }
-    .bookmark-video-body { min-width: 0; flex: 1; }
+    .bookmark-video-body { min-width: 0; flex: 1; padding-right: 30px; }
     .bookmark-video-title { color: var(--text-primary); display: block; font-size: 11px; font-weight: 700; line-height: 1.35; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .bookmark-video-count { color: var(--text-secondary); font-size: 9px; margin-top: 2px; }
     .bookmark-times { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
@@ -2977,6 +2978,29 @@
             <span>Saved videos</span>
             <span id="bookmarkVideoCount" class="bookmark-video-total">0 videos</span>
           </div>
+          <div class="bookmark-tools" aria-label="Bookmark search and filters">
+            <input id="bookmarkSearch" type="search" placeholder="Search titles, notes, channels" aria-label="Search bookmarks">
+            <input id="bookmarkLabelFilter" type="search" placeholder="Label" aria-label="Filter by label">
+            <input id="bookmarkChannelFilter" type="search" placeholder="Channel" aria-label="Filter by channel">
+            <div class="cognify-select" id="bookmarkDurationPicker">
+              <button class="cognify-select-trigger" id="bookmarkDurationTrigger" type="button" aria-haspopup="listbox" aria-expanded="false"><span id="bookmarkDurationLabel">Any duration</span><span class="cognify-select-arrow" aria-hidden="true"></span></button>
+              <div class="cognify-select-options" id="bookmarkDurationOptions" role="listbox" aria-label="Filter by duration" hidden></div>
+            </div>
+            <select id="bookmarkDurationFilter" aria-hidden="true" tabindex="-1" hidden><option value="">Any duration</option><option value="600">Under 10 min</option><option value="1800">Under 30 min</option><option value="3600">Under 1 hour</option></select>
+            <input id="bookmarkDateFilter" type="date" aria-label="Bookmarks since date">
+          </div>
+          <div class="bookmark-library-actions">
+            <div class="cognify-select" id="bookmarkFolderPicker">
+              <button class="cognify-select-trigger" id="bookmarkFolderTrigger" type="button" aria-haspopup="listbox" aria-expanded="false">
+                <span id="bookmarkFolderLabel">All collections</span><span class="cognify-select-arrow" aria-hidden="true"></span>
+              </button>
+              <div class="cognify-select-options" id="bookmarkFolderOptions" role="listbox" aria-label="Bookmark collection" hidden></div>
+            </div>
+            <select id="bookmarkFolderSelect" aria-hidden="true" tabindex="-1" hidden><option value="all">All collections</option></select>
+            <button class="btn-import" id="newBookmarkFolderBtn" type="button">New collection</button>
+            <button class="btn-export" id="shareBookmarkCollectionBtn" type="button">Share collection</button>
+          </div>
+          <div id="bookmarkRecommendations" class="bookmark-recommendations" hidden></div>
           <div id="bookmarkLibrary" class="bookmark-library" aria-live="polite">
             <div class="bookmark-library-empty">Loading saved videos...</div>
           </div>
@@ -3000,6 +3024,24 @@
             Import Bookmarks
           </button>
         </div>
+      </section>
+
+      <section>
+        <h2>Personalization</h2>
+        <div class="personalization-grid">
+          <label>Preset profile<div class="cognify-select" id="profilePicker"><button class="cognify-select-trigger" id="profileTrigger" type="button" aria-haspopup="listbox" aria-expanded="false"><span id="profileLabel">Choose a profile</span><span class="cognify-select-arrow" aria-hidden="true"></span></button><div class="cognify-select-options" id="profileOptions" role="listbox" aria-label="Preset profile" hidden></div></div><select id="profilePreset" aria-hidden="true" tabindex="-1" hidden><option value="">Choose a profile</option><option value="student">Student</option><option value="professional">Professional</option><option value="casual">Casual</option></select></label>
+          <label>Theme<div class="cognify-select" id="themePicker"><button class="cognify-select-trigger" id="themeTrigger" type="button" aria-haspopup="listbox" aria-expanded="false"><span id="themeLabel">System preference</span><span class="cognify-select-arrow" aria-hidden="true"></span></button><div class="cognify-select-options" id="themeOptions" role="listbox" aria-label="Theme" hidden></div></div><select id="themePreference" aria-hidden="true" tabindex="-1" hidden><option value="system">System preference</option><option value="dark">Dark</option><option value="light">Light</option></select></label>
+        </div>
+        <div class="setting-desc">Profiles apply recommended playback and focus settings. Theme follows your device when set to System.</div>
+        <button class="btn-import" id="startTutorialBtn" type="button">Start interactive tutorial</button>
+        <button class="btn-export" id="whatsNewBtn" type="button">What's new</button>
+        <div class="setting-desc"><button class="text-button" id="tipsGuideBtn" type="button">Open feature guide and tips</button></div>
+      </section>
+
+      <section>
+        <h2>Sync Settings</h2>
+        <div class="setting-desc">Create a QR code containing your non-sensitive preferences for another Cognify install.</div>
+        <button class="btn-export" id="showSyncQrBtn" type="button">Show sync QR</button>
       </section>
 
       <!-- Playback Presets -->
@@ -3266,7 +3308,7 @@
     <footer>
       <div class="footer-content">
         <div class="footer-left">
-          <span class="version">v3.8.0</span>
+            <span class="version">v3.9.0</span>
           <div class="status">
             <div class="status-dot"></div>
             Active
@@ -3306,6 +3348,7 @@
     </footer>
   </div>
   
+  <script src="../bookmark-utils.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>

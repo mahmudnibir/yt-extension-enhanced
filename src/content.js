@@ -2173,7 +2173,10 @@
         time,
         label: "",
         videoId: new URLSearchParams(window.location.search).get("v"),
-        title: videoTitle || 'Untitled video'
+        title: videoTitle || 'Untitled video',
+        channel: document.querySelector('#owner #channel-name, ytd-channel-name a')?.textContent?.trim() || '',
+        duration: Number.isFinite(video.duration) ? Math.floor(video.duration) : 0,
+        createdAt: new Date().toISOString()
       };
       bookmarks.push(newBookmark);
       bookmarks.sort((a, b) => a.time - b.time);
