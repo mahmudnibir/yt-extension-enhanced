@@ -135,6 +135,24 @@ body[data-theme="light"] .logo {
     background: var(--accent-color);
 }
 
+body[data-theme="light"] .header-left {
+    color: var(--text-primary) !important;
+}
+
+body[data-theme="light"] .theme-toggle {
+    background: #e3e0da !important;
+    border: 1px solid #c6c1b8 !important;
+    box-shadow: 0 1px 2px rgba(45, 43, 40, .08);
+    color: var(--text-primary) !important;
+}
+
+body[data-theme="light"] .theme-toggle:hover,
+body[data-theme="light"] .theme-toggle:focus-visible {
+    background: #d8d4cc !important;
+    border-color: #a9a39a !important;
+    box-shadow: 0 0 0 2px rgba(255, 0, 0, .12);
+}
+
 .shortcut-conflict { color: var(--error); font-size: 10px; margin-top: 4px; }
 /* Advanced feature controls */
 .bookmark-tools,

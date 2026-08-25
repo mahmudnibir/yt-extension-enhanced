@@ -1425,6 +1425,15 @@ document.addEventListener('DOMContentLoaded', () => {
     applyTheme(themePreference.value);
     if (globalThis.chrome?.storage?.sync) chrome.storage.sync.set({ themePreference: themePreference.value });
   });
+  document.getElementById('headerThemeToggle')?.addEventListener('click', () => {
+    const nextTheme = document.body.dataset.theme === 'light' ? 'dark' : 'light';
+    if (themePreference) {
+      themePreference.value = nextTheme;
+      themePreference.dispatchEvent(new Event('change'));
+    } else {
+      applyTheme(nextTheme);
+    }
+  });
   profilePreset?.addEventListener('change', () => {
     const settings = profileSettings[profilePreset.value];
     if (!settings) return;
