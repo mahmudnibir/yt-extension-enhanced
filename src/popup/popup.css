@@ -70,15 +70,69 @@ body {
 }
 
 body[data-theme="light"] {
-    --surface-dim: #f4f4f2;
-    --surface-container-low: #ffffff;
-    --surface-container: #ffffff;
-    --surface-container-high: #ededeb;
-    --surface-container-highest: #e3e3e0;
-    --on-surface: #171717;
-    --on-background: #171717;
-    --on-surface-variant: #5b5b58;
-    --background: #f4f4f2;
+    --bg-primary: #f6f5f2;
+    --bg-secondary: #eeece8;
+    --bg-tertiary: #e6e3de;
+    --bg-card: #faf9f7;
+    --bg-card-hover: #e1ded8;
+    --accent-hover: #b80000;
+    --border-color: rgba(40, 38, 34, .12);
+    --border-color-hover: rgba(40, 38, 34, .24);
+    --text-primary: #2d2b28;
+    --text-secondary: rgba(45, 43, 40, .62);
+    --icon-bg: rgba(255, 0, 0, .10);
+    --surface-dim: #f6f5f2;
+    --surface-container-low: #faf9f7;
+    --surface-container: #faf9f7;
+    --surface-container-high: #e8e5e0;
+    --surface-container-highest: #dedbd5;
+    --on-surface: #2d2b28;
+    --on-background: #2d2b28;
+    --on-surface-variant: #68645e;
+    --background: #f6f5f2;
+}
+
+body[data-theme="light"] {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+}
+
+body[data-theme="light"] svg[stroke="white"],
+body[data-theme="light"] svg[stroke="#fff"],
+body[data-theme="light"] svg[stroke="#ffffff"] {
+    stroke: #111111 !important;
+}
+
+body[data-theme="light"] svg[fill="white"],
+body[data-theme="light"] svg[fill="#fff"],
+body[data-theme="light"] svg[fill="#ffffff"] {
+    fill: #111111 !important;
+}
+
+body[data-theme="light"] [style*="color: white"],
+body[data-theme="light"] [style*="color: #fff"],
+body[data-theme="light"] [style*="color: #ffffff"] {
+    color: #111111 !important;
+}
+
+body[data-theme="light"] header,
+body[data-theme="light"] .tabs,
+body[data-theme="light"] footer {
+    background: var(--bg-secondary) !important;
+    color: var(--text-primary) !important;
+    border-color: var(--border-color) !important;
+}
+
+body[data-theme="light"] .tab,
+body[data-theme="light"] h1,
+body[data-theme="light"] .footer-btn,
+body[data-theme="light"] .version,
+body[data-theme="light"] .status {
+    color: var(--text-primary) !important;
+}
+
+body[data-theme="light"] .logo {
+    background: var(--accent-color);
 }
 
 .shortcut-conflict { color: var(--error); font-size: 10px; margin-top: 4px; }

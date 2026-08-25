@@ -1423,12 +1423,12 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   themePreference?.addEventListener('change', () => {
     applyTheme(themePreference.value);
-    chrome.storage.sync.set({ themePreference: themePreference.value });
+    if (globalThis.chrome?.storage?.sync) chrome.storage.sync.set({ themePreference: themePreference.value });
   });
   profilePreset?.addEventListener('change', () => {
     const settings = profileSettings[profilePreset.value];
     if (!settings) return;
-    chrome.storage.sync.set({ ...settings, profilePreset: profilePreset.value }, () => window.location.reload());
+    if (globalThis.chrome?.storage?.sync) chrome.storage.sync.set({ ...settings, profilePreset: profilePreset.value }, () => window.location.reload());
   });
 
   async function runTutorial() {
